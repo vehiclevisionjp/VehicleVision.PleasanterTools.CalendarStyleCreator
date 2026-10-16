@@ -23,6 +23,8 @@ public static class Program
                     Options (same style as Implem.CodeDefiner: start with /, a value follows):
                       /calendar-id <id,...>       Google Calendar IDs, comma separated (public calendars; no API key)
                                                   Default: {GoogleCalendarHolidaySource.JapaneseHolidays}; "none" = CSV only
+                      /ical-url <url,...>         iCal (.ics) https URLs, comma separated. Alone, it replaces the default calendar.
+                                                  Auth for all URLs: env {Options.IcalBearerTokenVariable}, or {Options.IcalBasicUserVariable} + {Options.IcalBasicPasswordVariable}
                       /csv <file>                 Extra holidays from a CSV file ("date,name" per line); overrides Google on the same date
                       /from <year> /to <year>     Output year range for holidays and weekends (default: this year and next)
                       /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
@@ -63,6 +65,8 @@ public static class Program
         var sources = new List<IHolidaySource>();
         foreach (var calendarId in options.CalendarIds)
             sources.Add(new GoogleCalendarHolidaySource(calendarId, fromYear, toYear));
+        var auth = IcalAuth.FromEnvironment(Environment.GetEnvironmentVariable);
+        foreach (var url in options.IcalUrls) sources.Add(new IcalHolidaySource(url, auth.IsEmpty ? null : auth, fromYear, toYear));
         // 同じ日付が複数の取得元にある場合は後勝ち（CSV で Google の名称や追加休日を上書きできる）。
         if (options.CsvPath != null) sources.Add(new CsvHolidaySource(options.CsvPath));
         var holidays = new List<Holiday>();

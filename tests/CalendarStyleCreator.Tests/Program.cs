@@ -32,9 +32,29 @@ var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260101\r\nSTA
     + "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260112\r\nSUMMARY:成人の\r\n 日\r\nEND:VEVENT\r\n"
     + "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260211\r\nSTATUS:CANCELLED\r\nSUMMARY:x\r\nEND:VEVENT\r\n"
     + "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20300101\r\nSUMMARY:out\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
-var google = GoogleCalendarHolidaySource.Parse(ics, 2026, 2027);
+var google = IcalHolidaySource.Parse(ics, 2026, 2027);
 Check(google.Count == 2 && google[0] == new Holiday(new DateOnly(2026, 1, 1), "元日"), "iCal date and summary");
 Check(google[1].Name == "成人の日", "iCal folded line is joined");
+
+// iCal URL
+Reject(() => IcalHolidaySource.ValidateUrl("http://example.com/a.ics"), "iCal URL must be https");
+Reject(() => Options.Parse(["generate", "/output", "o", "/ical-url", "file:///x.ics"]), "iCal URL scheme");
+var byUrl = Options.Parse(["generate", "/output", "o", "/ical-url", "https://a.example/x.ics, https://b.example/y.ics"]);
+Check(byUrl.IcalUrls.Count == 2 && byUrl.CalendarIds.Count == 0, "Multiple iCal URLs replace the default calendar");
+Check(Options.Parse(["generate", "/output", "o", "/ical-url", "https://a.example/x.ics", "/calendar-id", "a@x"]).CalendarIds.Count == 1, "Calendar IDs and iCal URLs can be combined");
+Check(IcalAuth.FromEnvironment(_ => null).IsEmpty, "No auth by default");
+Check(IcalAuth.FromEnvironment(k => k == Options.IcalBearerTokenVariable ? "tok" : null).ToHeader()!.ToString() == "Bearer tok", "Bearer auth");
+Check(IcalAuth.FromEnvironment(k => k == Options.IcalBasicUserVariable ? "u" : k == Options.IcalBasicPasswordVariable ? "p" : null).ToHeader()!.Parameter == Convert.ToBase64String("u:p"u8.ToArray()), "Basic auth");
+Reject(() => IcalAuth.FromEnvironment(_ => "x"), "Bearer and Basic are exclusive");
+var fake = new FakeIcalHandler();
+using (var fakeClient = new HttpClient(fake))
+{
+    const string FakeUrl = "https://ical.test/private/basic.ics";
+    var withAuth = new IcalHolidaySource(FakeUrl, new IcalAuth(BearerToken: "secret"), 2026, 2026, fakeClient);
+    Check((await withAuth.GetHolidaysAsync(default)).Count == 1 && fake.LastAuthorization == "Bearer secret", "iCal fetch sends the Authorization header");
+    try { await new IcalHolidaySource(FakeUrl, null, 2026, 2026, fakeClient).GetHolidaysAsync(default); throw new Exception("FAIL: 401 expected"); }
+    catch (UserError e) { Check(e.Message.Contains("401") && !e.Message.Contains("secret") && !e.Message.Contains(FakeUrl), "401 reports status without leaking URL or token"); }
+}
 
 // CSS
 var theme = new CalendarTheme();
@@ -81,3 +101,15 @@ try
 finally { if (Directory.Exists(temp)) Directory.Delete(temp, true); }
 
 Console.WriteLine($"{passed} checks passed.");
+
+// https が必須のため、実サーバーの代わりにメッセージハンドラーで応答する。
+sealed class FakeIcalHandler : HttpMessageHandler
+{
+    public string? LastAuthorization { get; private set; }
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
+    {
+        LastAuthorization = request.Headers.Authorization?.ToString();
+        if (LastAuthorization == null) return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));
+        return Task.FromResult(new HttpResponseMessage { Content = new StringContent("BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260101\r\nSUMMARY:x\r\nEND:VEVENT\r\n") });
+    }
+}
