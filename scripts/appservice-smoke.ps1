@@ -13,9 +13,12 @@ New-Item -ItemType Directory -Force $styles, $outside, (Join-Path $wwwroot 'Impl
 Expand-Archive -LiteralPath $zipPath -DestinationPath $wwwroot
 Copy-Item examples/holidays.csv (Join-Path $smokeHome 'holidays.csv')
 $csv = Join-Path $smokeHome 'holidays.csv'
-# 設定ファイル。相対パスは設定ファイルのあるフォルダ基準で解決される。
-$configPath = Join-Path $smokeHome 'calendarstyle.json'
-@{ calendars = @(); csv = @('holidays.csv'); from = 2026; to = 2026; prefix = 'Smoke_'; prune = $true; output = $styles } | ConvertTo-Json | Set-Content $configPath -Encoding utf8
+# パラメーターのフォルダ（Pleasanter の App_Data/Parameters に倣った Holidays.json・Style.json・Placement.json）。相対パスはこのフォルダ基準で解決される。
+$parameters = Join-Path $smokeHome 'Parameters'
+New-Item -ItemType Directory -Force $parameters | Out-Null
+@{ GoogleCalendarIds = @(); CsvFiles = @('../holidays.csv'); FromYear = 2026; ToYear = 2026 } | ConvertTo-Json | Set-Content (Join-Path $parameters 'Holidays.json') -Encoding utf8
+@{ Prune = $true; OutputPath = $styles } | ConvertTo-Json | Set-Content (Join-Path $parameters 'Placement.json') -Encoding utf8
+@{ Prefix = 'Smoke_' } | ConvertTo-Json | Set-Content (Join-Path $parameters 'Style.json') -Encoding utf8
 $app = Join-Path $wwwroot 'CalendarStyleCreator/VehicleVision.PleasanterTools.CalendarStyleCreator.dll'
 $names = @('WEBSITE_SITE_NAME','WEBSITE_INSTANCE_ID','DOTNET_ENVIRONMENT','CALENDARSTYLE_PLEASANTER_API_KEY','CALENDARSTYLE_ICAL_BEARER_TOKEN','CALENDARSTYLE_ICAL_BASIC_USER')
 $previous = @{}
@@ -42,6 +45,9 @@ try {
     Push-Location $outside
     try {
         Invoke-Checked -Arguments @('help') -ExpectedText 'Usage: CalendarStyleCreator'
+        # 既定のパラメーター（Pleasanter と同じ App_Data/Parameters 構成）が配布物に含まれる。
+        foreach ($file in 'Holidays.json', 'Style.json', 'Placement.json') { if (-not (Test-Path -LiteralPath (Join-Path $wwwroot "CalendarStyleCreator/App_Data/Parameters/$file"))) { throw "Default parameter file is missing from the package: $file" } }
+        $script:count++
         # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへ書き出す。
         Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'Done\. 4 holiday'
         $core = Join-Path $styles 'vvcsc_core.css'
@@ -59,8 +65,8 @@ try {
         Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles,'/prune') -ExpectedText 'Deleted obsolete style'
         if ((Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2025.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'mine.css'))) { throw '/prune did not limit itself to managed files.' }
         $script:count++
-        Invoke-Checked -Arguments @('generate','/config',$configPath) -ExpectedText 'Done\. 4 holiday'
-        if (-not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_core.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_2026.css'))) { throw 'Config file settings were not applied.' }
+        Invoke-Checked -Arguments @('generate','/parameters',$parameters) -ExpectedText 'Done\. 4 holiday'
+        if (-not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_core.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_2026.css'))) { throw 'Parameter files were not applied.' }
         $script:count++
         Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/output',$styles,'/site-id','100') -ExpectedExit 2 -ExpectedText 'applies to all sites'
         Invoke-Checked -Arguments @('generate','-output',$styles,'/csv',$csv) -ExpectedExit 2 -ExpectedText 'Options start with /'

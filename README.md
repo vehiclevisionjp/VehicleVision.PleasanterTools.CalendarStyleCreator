@@ -29,14 +29,15 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /p "C:\we
 
 | オプション | 内容 |
 | --- | --- |
-| `/calendar-id a,b` | Google カレンダー ID をカンマ区切りで複数指定。`none` で Google を使わない |
-| `/ical-url <url,...>` | iCal（.ics）の https URL をカンマ区切りで複数指定。単独で指定すると既定の日本の祝日は使わない |
+| `/calendar-id a,b` | Google カレンダー ID をカンマ区切りで複数指定（`GoogleCalendarIds` を上書き）。`none` で Google を使わない |
+| `/ical-url <url,...>` | iCal（.ics）の https URL をカンマ区切りで複数指定。`IcalUrls` を上書き。既定の日本の祝日にも足される |
 | `/csv <file>` | CSV からも読む。同じ日付は CSV が優先 |
 | `/from 2026 /to 2027` | 出力する年の範囲（既定: 今年と来年）。範囲外の休日と土日は出力しない |
 | `/holiday-bg` `/saturday-bg` `/holiday-text` `/saturday-text` | 色（`#rrggbb` または色名） |
 | `/p <フォルダ>` | `generate` の出力先を、本体フォルダ（`App_Data` のある `Implem.Pleasanter` またはその親）から決める。CodeDefiner と同じ指定。省略時は、このツールの兄弟フォルダ `Implem.Pleasanter` を使う |
 | `/output <フォルダ>` | `generate` の出力先を直接指定（`/p` より優先） |
 | `/site-id 1,2` | 適用サイトを限定（`register` のみ。省略時は全サイト） |
+| `/first-day-of-week <0-6>` | 標準カレンダーの週の開始曜日（0 日曜〜6 土曜、既定 1）。Pleasanter 側の設定と合わせる |
 | `/prefix <文字列>` | スタイル名の接頭辞（既定: `vvcsc_`）。英数字・`_`・`-` で 32 文字まで |
 | `/prune` | この接頭辞で始まり、今回は生成しなくなったスタイル（過ぎた年など）を削除する |
 | `/tenant-id <n>` | `register` のみ。拡張のテナント（省略時は API キーの持ち主のテナント） |
@@ -86,19 +87,34 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 - **テナント**: 拡張は API キーの持ち主のテナントに登録されます。別のテナントにする場合は `/tenant-id` を指定します。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます（本体は全テナントの拡張を起動時に読み込みます）。
 - **http**: Pleasanter の API に https の制限はないため http の URL も使えますが、API キーが平文で流れるため警告を出します。
 
-## 設定ファイル
+## パラメーター（固定の設定）
 
-固定の設定は JSON にして `/config` で渡せます（例: [examples/calendarstyle.json](examples/calendarstyle.json)）。コマンドラインのオプションが設定ファイルより優先され、相対パスは設定ファイルのあるフォルダ基準です。コメントと末尾カンマも書けます。
+固定にしておく設定は、Pleasanter 本体の `App_Data/Parameters` に倣った JSON で、このツールの `App_Data/Parameters` に置きます。配布物に既定値のファイルが入っているので、変えたい項目だけ編集してください（キーは PascalCase、値が `null` なら未指定）。
 
-```powershell
-dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /config calendarstyle.json
-```
-
-認証付きの iCal は、URL ごとに環境変数の名前を指定します（資格情報そのものは書けません）。
+| ファイル | 内容 |
+| --- | --- |
+| `Holidays.json` | 取得元: `GoogleCalendarIds`（配列）、`IcalUrls`（配列。文字列、または `Url` と認証用の環境変数名を持つオブジェクト）、`CsvFiles`（配列）、`FromYear`、`ToYear` |
+| `Style.json` | 見た目と名前: `Prefix`、`FirstDayOfWeek`（0 日曜〜6 土曜）、`Colors`（`HolidayBackground`・`SaturdayBackground`・`HolidayText`・`SaturdayText`） |
+| `Placement.json` | 配置: `OutputPath`、`PleasanterPath`、`Url`、`TenantId`、`SiteIdList`、`Prune` |
 
 ```json
-{ "icalUrls": [ { "url": "https://example.com/team.ics", "bearerTokenEnv": "TEAM_ICAL_TOKEN" } ] }
+{
+    "GoogleCalendarIds": [ "ja.japanese.official#holiday@group.v.calendar.google.com" ],
+    "IcalUrls": [
+        "https://example.com/company-holidays.ics",
+        { "Url": "https://example.com/private/team.ics", "BearerTokenEnv": "TEAM_ICAL_TOKEN" },
+        { "Url": "https://example.com/other.ics", "BasicUserEnv": "OTHER_ICAL_USER", "BasicPasswordEnv": "OTHER_ICAL_PASSWORD" }
+    ],
+    "CsvFiles": [ "holidays.csv" ]
+}
 ```
+
+- コマンドラインのオプションがパラメーターより優先されます（同じ項目だけを上書き）。`/parameters <フォルダ>` で別のフォルダも使えます。
+- 相対パスはパラメーターのフォルダ基準です。未知のキーはエラーになります。
+- 資格情報はパラメーターに書けません。認証付きの iCal は、URL ごとに環境変数の名前（`BearerTokenEnv`・`BasicUserEnv`・`BasicPasswordEnv`）を指定します。
+- ファイルが無ければ既定値（日本の祝日・`vvcsc_`・月曜始まり）で動きます。
+
+標準カレンダーの土日は、列の位置（`FirstDayOfWeek` からの並び）で指定するため、Pleasanter 側の週の開始曜日と同じ値にしてください。既定は月曜（1）で、Pleasanter の既定と同じです。
 
 App Service への配置は [App Service への配置](_documents/AppService導入手順.md) を参照してください。
 

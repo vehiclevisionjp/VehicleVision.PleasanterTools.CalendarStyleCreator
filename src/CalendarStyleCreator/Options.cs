@@ -2,25 +2,25 @@ using System.Globalization;
 
 namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 
-public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IReadOnlyList<string> CalendarIds, IReadOnlyList<IcalEndpoint> IcalUrls, int? FromYear, int? ToYear, string Prefix, bool Prune, IReadOnlyList<long> SiteIds, int? TenantId, string? Output, string? PleasanterUrl, CalendarTheme Theme)
+public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IReadOnlyList<string> CalendarIds, IReadOnlyList<IcalEndpoint> IcalUrls, int? FromYear, int? ToYear, string Prefix, bool Prune, int FirstDayOfWeek, IReadOnlyList<long> SiteIds, int? TenantId, string? Output, string? PleasanterUrl, CalendarTheme Theme)
 {
     // 拡張スタイルの名前の接頭辞。この接頭辞で始まるものだけをこのツールの管理対象とする（共通部は {prefix}core、年ごとは {prefix}{yyyy}）。
     public const string DefaultPrefix = "vvcsc_";
     // 認証付き iCal の既定の環境変数（認証の参照を持たない /ical-url 全体に適用）。Bearer と Basic はどちらか一方。
-    // 資格情報はコマンドラインにも設定ファイルにも置かず環境変数から読む（履歴・プロセス一覧・ファイルへの露出を避ける）。
+    // 資格情報はコマンドラインにもパラメーターファイルにも置かず環境変数から読む（履歴・プロセス一覧・ファイルへの露出を避ける）。
     public const string IcalBearerTokenVariable = "CALENDARSTYLE_ICAL_BEARER_TOKEN";
     public const string IcalBasicUserVariable = "CALENDARSTYLE_ICAL_BASIC_USER";
     public const string IcalBasicPasswordVariable = "CALENDARSTYLE_ICAL_BASIC_PASSWORD";
     public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
 
-    private static readonly string[] ValueOptions = ["config", "p", "csv", "calendar-id", "ical-url", "from", "to", "prefix", "site-id", "tenant-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
+    private static readonly string[] ValueOptions = ["parameters", "p", "csv", "calendar-id", "ical-url", "from", "to", "prefix", "first-day-of-week", "site-id", "tenant-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
     private static readonly string[] FlagOptions = ["prune"];
-    private static readonly string[] PathOptions = ["config", "p", "csv", "output"];
+    private static readonly string[] PathOptions = ["parameters", "p", "csv", "output"];
 
-    /// <summary>優先順位は コマンドライン &gt; 設定ファイル（/config）&gt; 既定値。</summary>
+    /// <summary>優先順位は コマンドライン &gt; パラメーターファイル（App_Data/Parameters、/parameters で変更）&gt; 既定値。</summary>
     public static Options Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", [], [], [], null, null, DefaultPrefix, false, [], null, null, null, new());
+        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", [], [], [], null, null, DefaultPrefix, false, CssGenerator.DefaultFirstDayOfWeek, [], null, null, null, new());
         var action = args[0];
         if (action is not ("generate" or "register")) throw new UserError("Unknown action. Use generate or register.");
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -35,7 +35,8 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
             if (++i >= args.Length || (!PathOptions.Contains(name) && args[i].StartsWith('/')) || !values.TryAdd(name, args[i])) throw new UserError("Missing or duplicate option value.");
         }
         string? V(string key) => values.GetValueOrDefault(key);
-        var config = V("config") is { } configPath ? ConfigFile.Load(configPath) : new ConfigFile();
+        // パラメーターは Pleasanter 本体と同じく App_Data/Parameters に置く（このツールのフォルダ内が既定、/parameters で変更）。
+        var config = ParameterFiles.Load(V("parameters") ?? ParameterFiles.DefaultFolder());
         int? Year(string key, int? fromConfig)
         {
             if (V(key) == null) return fromConfig;
@@ -47,7 +48,7 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
         IReadOnlyList<long> sites = V("site-id") != null
             ? List(V("site-id")).Select(s => long.TryParse(s, NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new UserError("Site ID must be a positive number.")).Distinct().ToList()
             : config.SiteIds ?? [];
-        // 取得元。指定がなければ日本の祝日カレンダー。none（設定ファイルでは空配列）で Google カレンダーを使わない。
+        // 取得元。指定がなければ日本の祝日カレンダー。none（パラメーターでは空配列）で Google カレンダーを使わない。
         // iCal URL だけを指定したときは、既定の日本の祝日は足さない（指定した取得元だけを使う）。
         IReadOnlyList<string>? calendars = V("calendar-id") switch { null => config.Calendars, "none" => [], var list => List(list) };
         IReadOnlyList<IcalEndpoint> icalUrls = V("ical-url") != null ? List(V("ical-url")).Select(url => { IcalHolidaySource.ValidateUrl(url); return new IcalEndpoint(url); }).ToList() : config.IcalUrls ?? [];
@@ -56,6 +57,12 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
 
         var defaults = config.Theme ?? new CalendarTheme();
         var theme = new CalendarTheme(V("holiday-bg") ?? defaults.HolidayBackground, V("saturday-bg") ?? defaults.SaturdayBackground, V("holiday-text") ?? defaults.HolidayText, V("saturday-text") ?? defaults.SaturdayText).Validate();
+        var firstDay = CssGenerator.DefaultFirstDayOfWeek;
+        if (V("first-day-of-week") != null)
+        {
+            if (!int.TryParse(V("first-day-of-week"), NumberStyles.None, CultureInfo.InvariantCulture, out firstDay) || firstDay > 6) throw new UserError("First day of week must be 0 (Sunday) to 6 (Saturday).");
+        }
+        else firstDay = config.FirstDayOfWeek ?? firstDay;
         int? tenant = null;
         if (V("tenant-id") != null)
         {
@@ -64,11 +71,11 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
         }
         tenant ??= config.TenantId;
         var output = V("output") ?? config.Output ?? (action == "generate" ? FindExtendedStylesFolder(V("p") ?? config.PleasanterPath) : null);
-        var options = new Options(action, csv, calendars, icalUrls, Year("from", config.From), Year("to", config.To), ValidatePrefix(V("prefix") ?? config.Prefix ?? DefaultPrefix), flags.Contains("prune") || config.Prune == true, sites, tenant, output, V("url") ?? config.PleasanterUrl, theme);
-        if (options.CsvPaths.Count == 0 && options.CalendarIds.Count == 0 && options.IcalUrls.Count == 0) throw new UserError("Specify /calendar-id, /ical-url, /csv or /config.");
+        var options = new Options(action, csv, calendars, icalUrls, Year("from", config.From), Year("to", config.To), ValidatePrefix(V("prefix") ?? config.Prefix ?? DefaultPrefix), flags.Contains("prune") || config.Prune == true, firstDay, sites, tenant, output, V("url") ?? config.PleasanterUrl, theme);
+        if (options.CsvPaths.Count == 0 && options.CalendarIds.Count == 0 && options.IcalUrls.Count == 0) throw new UserError("Specify /calendar-id, /ical-url, /csv or the Holidays parameters.");
         if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
-        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output, /p, or an Implem.Pleasanter folder beside this tool.");
-        if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url (or pleasanterUrl in the config file).");
+        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output, /p (or OutputPath / PleasanterPath in Placement.json), or an Implem.Pleasanter folder beside this tool.");
+        if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url (or Url in Placement.json).");
         if (action == "generate" && options.SiteIds.Count > 0) throw new UserError("generate (file placement) applies to all sites. Use register to limit the style to specific sites.");
         if (action == "generate" && options.TenantId != null) throw new UserError("/tenant-id applies to register only.");
         if (action == "register") ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);

@@ -4,7 +4,7 @@
 
 | 資料 | 内容 |
 | --- | --- |
-| [製品の入口](../README.md) | 概要・配置方式・設定ファイル・最初の実行 |
+| [製品の入口](../README.md) | 概要・配置方式・パラメーター・最初の実行 |
 | [App Service への配置](AppService導入手順.md) | 既存 App Service での配置・generate / register・環境変数 |
 
 ## 開発者向け

@@ -40,7 +40,7 @@ Check(google[1].Name == "成人の日", "iCal folded line is joined");
 Reject(() => IcalHolidaySource.ValidateUrl("http://example.com/a.ics"), "iCal URL must be https");
 Reject(() => Options.Parse(["generate", "/output", "o", "/ical-url", "file:///x.ics"]), "iCal URL scheme");
 var byUrl = Options.Parse(["generate", "/output", "o", "/ical-url", "https://a.example/x.ics, https://b.example/y.ics"]);
-Check(byUrl.IcalUrls.Count == 2 && byUrl.CalendarIds.Count == 0, "Multiple iCal URLs replace the default calendar");
+Check(byUrl.IcalUrls.Count == 2 && byUrl.CalendarIds.SequenceEqual([GoogleCalendarHolidaySource.JapaneseHolidays]), "Multiple iCal URLs are added to the configured calendars");
 Check(Options.Parse(["generate", "/output", "o", "/ical-url", "https://a.example/x.ics", "/calendar-id", "a@x"]).CalendarIds.Count == 1, "Calendar IDs and iCal URLs can be combined");
 Check(IcalAuth.FromEnvironment(_ => null).IsEmpty, "No auth by default");
 Check(IcalAuth.FromEnvironment(k => k == Options.IcalBearerTokenVariable ? "tok" : null).ToHeader()!.ToString() == "Bearer tok", "Bearer auth");
@@ -80,37 +80,59 @@ try
 }
 finally { Directory.Delete(pRoot, true); }
 
-// Config file
+// Parameters（Pleasanter の App_Data/Parameters に倣う。Holidays.json・Style.json・Placement.json）
+var shipped = ParameterFiles.DefaultFolder() ?? throw new Exception("FAIL: default parameters are not shipped beside the tool");
+Check(Directory.GetFiles(shipped, "*.json").Select(Path.GetFileName).Order().SequenceEqual(["Holidays.json", "Placement.json", "Style.json"]), "Default parameter files are shipped with the tool");
+var defaultParameters = ParameterFiles.Load(shipped);
+Check(defaultParameters.Calendars!.SequenceEqual([GoogleCalendarHolidaySource.JapaneseHolidays]) && defaultParameters.IcalUrls!.Count == 0 && defaultParameters.Csv!.Count == 0 && defaultParameters.From == null && defaultParameters.To == null, "Shipped Holidays.json holds the defaults (Japanese holidays)");
+Check(defaultParameters.Prefix == Options.DefaultPrefix && defaultParameters.FirstDayOfWeek == CssGenerator.DefaultFirstDayOfWeek && defaultParameters.Theme == new CalendarTheme(), "Shipped Style.json equals the built-in defaults");
+Check(defaultParameters.Output == null && defaultParameters.PleasanterPath == null && defaultParameters.PleasanterUrl == null && defaultParameters.TenantId == null && defaultParameters.SiteIds!.Count == 0 && defaultParameters.Prune == false, "Shipped Placement.json holds the defaults");
+Check(ParameterFiles.Load(null).Calendars == null, "No parameter files means unspecified values");
 var configDir = Path.Combine(Path.GetTempPath(), "csc-cfg-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(configDir);
 try
 {
-    var configPath = Path.Combine(configDir, "calendarstyle.json");
-    File.WriteAllText(configPath, """
+    void Write(string name, string json) => File.WriteAllText(Path.Combine(configDir, name), json);
+    Write("Holidays.json", """
         {
-          // comments and trailing commas are allowed
-          "calendars": ["a@group.calendar.google.com", "b@group.calendar.google.com"],
-          "icalUrls": ["https://x.example/a.ics", { "url": "https://y.example/b.ics", "basicUserEnv": "U", "basicPasswordEnv": "P" },],
-          "csv": ["holidays.csv"], "from": 2026, "to": 2027, "prefix": "FromConfig_", "prune": true, "tenantId": 4, "siteIds": [3, 4],
-          "output": "out", "colors": { "saturdayBackground": "#abcdef" }
+          "GoogleCalendarIds": ["a@group.calendar.google.com", "b@group.calendar.google.com"],
+          "IcalUrls": ["https://x.example/a.ics", { "Url": "https://y.example/b.ics", "BasicUserEnv": "U", "BasicPasswordEnv": "P" },],
+          "CsvFiles": ["holidays.csv"], "FromYear": 2026, "ToYear": 2027
         }
         """);
-    var fromConfig = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com"]);
-    Check(fromConfig.CalendarIds.Count == 2 && fromConfig.IcalUrls.Count == 2 && fromConfig.IcalUrls[1].BasicUserEnv == "U", "Config arrays and per-URL auth names");
-    Check(fromConfig.CsvPaths.SequenceEqual([Path.Combine(configDir, "holidays.csv")]) && fromConfig.Output == Path.Combine(configDir, "out"), "Config relative paths resolve from the config folder");
-    Check(fromConfig.Prefix == "FromConfig_" && fromConfig.Prune && fromConfig.TenantId == 4 && fromConfig.SiteIds.SequenceEqual([3, 4]) && fromConfig.FromYear == 2026 && fromConfig.ToYear == 2027, "Config scalar values");
-    Check(fromConfig.Theme.SaturdayBackground == "#abcdef" && fromConfig.Theme.HolidayBackground == new CalendarTheme().HolidayBackground, "Config colors override only given keys");
-    var overridden = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com", "/prefix", "Cli_", "/calendar-id", "none", "/site-id", "9"]);
-    Check(overridden.Prefix == "Cli_" && overridden.CalendarIds.Count == 0 && overridden.SiteIds.SequenceEqual([9]), "Command line overrides the config file");
-    File.WriteAllText(configPath, "{ \"calendars\": [] , \"csv\": [\"h.csv\"], \"output\": \"o\" }");
-    Check(Options.Parse(["generate", "/config", configPath]).CalendarIds.Count == 0, "Empty calendars array disables Google calendars");
-    File.WriteAllText(configPath, "{ \"csv\": [\"h.csv\"], \"output\": \"o\" }");
-    Check(Options.Parse(["generate", "/config", configPath]).CalendarIds.SequenceEqual([GoogleCalendarHolidaySource.JapaneseHolidays]), "Default calendar when the config names no calendar");
-    foreach (var bad in new[] { "{ \"bearerToken\": \"secret\" }", "{ \"icalUrls\": [{ \"url\": \"https://x/a.ics\", \"bearerToken\": \"secret\" }] }", "{ \"icalUrls\": [\"http://x/a.ics\"] }", "{ \"from\": \"2026\" }", "[1]", "{ broken" })
+    Write("Style.json", """{ "Prefix": "FromFile_", "FirstDayOfWeek": 0, "Colors": { "SaturdayBackground": "#abcdef", "HolidayText": null } }""");
+    Write("Placement.json", """{ "OutputPath": "out", "Url": "https://pl.example.com", "TenantId": 4, "SiteIdList": [3, 4], "Prune": true }""");
+    var fromFiles = Options.Parse(["register", "/parameters", configDir]);
+    Check(fromFiles.CalendarIds.Count == 2 && fromFiles.IcalUrls.Count == 2 && fromFiles.IcalUrls[1].BasicUserEnv == "U", "Parameter arrays and per-URL auth names");
+    Check(fromFiles.CsvPaths.SequenceEqual([Path.Combine(configDir, "holidays.csv")]) && fromFiles.Output == Path.Combine(configDir, "out"), "Relative paths resolve from the Parameters folder");
+    Check(fromFiles.Prefix == "FromFile_" && fromFiles.Prune && fromFiles.TenantId == 4 && fromFiles.SiteIds.SequenceEqual([3, 4]) && fromFiles.FromYear == 2026 && fromFiles.ToYear == 2027 && fromFiles.FirstDayOfWeek == 0 && fromFiles.PleasanterUrl == "https://pl.example.com", "Parameter scalar values across the three files");
+    Check(fromFiles.Theme.SaturdayBackground == "#abcdef" && fromFiles.Theme.HolidayBackground == new CalendarTheme().HolidayBackground && fromFiles.Theme.HolidayText == new CalendarTheme().HolidayText, "Colors override only given keys; null means default");
+    var overridden = Options.Parse(["register", "/parameters", configDir, "/prefix", "Cli_", "/calendar-id", "none", "/site-id", "9", "/first-day-of-week", "2"]);
+    Check(overridden.Prefix == "Cli_" && overridden.CalendarIds.Count == 0 && overridden.SiteIds.SequenceEqual([9]) && overridden.FirstDayOfWeek == 2, "Command line overrides the parameter files");
+    Write("Holidays.json", """{ "GoogleCalendarIds": [], "CsvFiles": ["h.csv"] }""");
+    File.Delete(Path.Combine(configDir, "Style.json")); File.Delete(Path.Combine(configDir, "Placement.json"));
+    Check(Options.Parse(["generate", "/parameters", configDir, "/output", "o"]).CalendarIds.Count == 0, "Empty GoogleCalendarIds disables Google calendars");
+    Write("Holidays.json", """{ "CsvFiles": ["h.csv"] }""");
+    Check(Options.Parse(["generate", "/parameters", configDir, "/output", "o"]).CalendarIds.SequenceEqual([GoogleCalendarHolidaySource.JapaneseHolidays]), "Default calendar when the parameters name no calendar");
+    Check(Options.Parse(["generate", "/output", "o", "/parameters", configDir]).Prefix == Options.DefaultPrefix, "Missing Style.json means defaults");
+    Reject(() => Options.Parse(["generate", "/parameters", Path.Combine(configDir, "nothing"), "/output", "o"]), "Missing Parameters folder is rejected");
+    foreach (var (file, bad) in new[]
     {
-        File.WriteAllText(configPath, bad);
-        try { Options.Parse(["generate", "/config", configPath, "/output", "o"]); throw new Exception("FAIL: bad config accepted: " + bad); }
-        catch (UserError e) { Check(!e.Message.Contains("secret"), "Bad config is rejected without echoing values"); }
+        ("Holidays.json", """{ "BearerToken": "secret" }"""),
+        ("Holidays.json", """{ "IcalUrls": [{ "Url": "https://x/a.ics", "BearerToken": "secret" }] }"""),
+        ("Holidays.json", """{ "IcalUrls": ["http://x/a.ics"] }"""),
+        ("Holidays.json", """{ "FromYear": "2026" }"""),
+        ("Style.json", """{ "Colors": { "HolidayBackground": "red; }" } }"""),
+        ("Style.json", """{ "FirstDayOfWeek": 7 }"""),
+        ("Placement.json", """{ "TenantId": 0 }"""),
+        ("Placement.json", """[1]"""),
+        ("Placement.json", """{ broken"""),
+    })
+    {
+        Write(file, bad);
+        try { Options.Parse(["generate", "/parameters", configDir, "/output", "o", "/csv", "h.csv"]); throw new Exception("FAIL: bad parameters accepted: " + bad); }
+        catch (UserError e) { Check(!e.Message.Contains("secret"), "Bad parameters are rejected without echoing values"); }
+        File.Delete(Path.Combine(configDir, file));
     }
 }
 finally { Directory.Delete(configDir, true); }
@@ -123,15 +145,19 @@ Check(generated.Years.Keys.SequenceEqual([2026, 2027]), "One style per year in t
 Check(!generated.Years[2026].Contains("2027/1/1") && generated.Years[2027].Contains("[data-id=\"2027/1/1\"]") && !generated.Years[2027].Contains("2026/1/1"), "Each year file contains only its own dates");
 Check(generated.Core.Contains(".fc-day-sat:where(:not(.fc-day-other)) {") && generated.Core.Contains(".fc-day-sun:where(:not(.fc-day-other)) {") && !generated.Core.Contains("data-id") && !generated.Core.Contains("data-date"), "Core holds only the FullCalendar weekday classes, no dates");
 Check(!css.Contains(".fc-day-sat"), "Year files do not repeat the weekday classes");
-Check(css.Contains("td.container:has(> div > .day)[data-id=\"2026/1/1\"]:not(.other-month)"), "Standard monthly cell, no zero padding, excludes other month and yearly view");
-Check(css.Contains("td.container.is-weekly[data-id=\"2026/2/11\"]"), "Standard weekly cell");
+Check(css.Contains("td.container:has(> div > .day):is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"]):not(.other-month)"), "Standard monthly cells share one :is() rule, no zero padding, exclude other month and yearly view");
+Check(css.Contains("td.container.is-weekly:is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"])"), "Standard weekly cells");
 Check(css.Contains("td.fc-daygrid-day[data-date=\"2026-01-01\"]:not(.fc-day-other) .fc-daygrid-day-top::after"), "FullCalendar day label");
 Check(css.Contains("content: \"A2\"") && !css.Contains("content: \"A\""), "Last duplicate wins");
-Check(css.Contains("[data-id=\"2026/1/3\"]") && css.Contains("[data-id=\"2026/1/4\"]"), "Saturday 2026-01-03 and Sunday 2026-01-04 are styled");
-Check(!css.Contains("[data-id=\"2026/1/5\"]"), "Weekday is not styled");
+Check(!css.Contains("[data-id=\"2026/1/3\"]") && !css.Contains("[data-id=\"2026/1/4\"]") && css.Length < 20000, "Year files hold only holidays (weekends are not listed by date), so they stay small");
 Check(css.Contains(":is(#CalendarBody, [id^=\"CalendarBody\"]) td.container") && css.Contains(":is(#FullCalendar, [id^=\"FullCalendar\"]).calendar-container"), "Selectors outweigh the built-in #CalendarBody td / #FullCalendar td rules (verified on a real Pleasanter)");
-Check(css.Contains("th.fc-col-header-cell[data-date=\"2026-01-01\"] .fc-col-header-cell-cushion") && css.Contains("[data-id=\"2026/2/11\"]:not(.other-month) .day { width: auto"), "Holiday header text color and widened .day for the label");
-Check(css.IndexOf(theme.SaturdayBackground, StringComparison.Ordinal) < css.IndexOf(theme.HolidayBackground, StringComparison.Ordinal), "Holiday colors come after Saturday within the year file so they win");
+Check(css.Contains("th.fc-col-header-cell:is([data-date=\"2026-01-01\"],[data-date=\"2026-02-11\"]) .fc-col-header-cell-cushion") && css.Contains(":is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"]):not(.other-month) .day { width: auto"), "Holiday header text color and widened .day for the label");
+Check(generated.Core.Contains("td.container:where(:has(> div > .day)):where(:nth-of-type(6)):where(:not(.other-month))") && generated.Core.Contains("td.container.is-weekly:where(:nth-of-type(7))"), "Core weekends use column positions (Monday start: Saturday is the 6th, Sunday the 7th td) with zero-specificity structure so holidays win");
+Check(CssGenerator.Generate([], theme, 2026, 2026, 0).Core.Contains(":where(:nth-of-type(7))") && CssGenerator.Generate([], theme, 2026, 2026, 0).Core.Contains(":where(:nth-of-type(1))"), "Sunday start: Saturday is the 7th, Sunday the 1st td");
+Check(CssGenerator.Generate([], theme, 2026, 2026, 6).Core.Contains(":where(:nth-of-type(1))") && CssGenerator.Generate([], theme, 2026, 2026, 6).Core.Contains(":where(:nth-of-type(2))"), "Saturday start: Saturday is the 1st, Sunday the 2nd td");
+Reject(() => CssGenerator.Generate([], theme, 2026, 2026, 7), "First day of week out of range");
+Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/first-day-of-week", "0"]).FirstDayOfWeek == 0 && Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).FirstDayOfWeek == 1, "/first-day-of-week (default Monday)");
+Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/first-day-of-week", "7"]), "/first-day-of-week out of range");
 Check(css.Contains("position: absolute") && css.Contains("td.container.is-weekly[data-id=\"2026/1/1\"]::before"), "Weekly label is absolutely positioned so multi-day bars do not shift");
 Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026).Years[2026], "CSS is deterministic and independent of other years");
 Check(CssGenerator.EscapeString("a\"b\\c</style>\n") == "a\\\"b\\\\c\\3c /style\\3e  ", "CSS string escape");

@@ -51,22 +51,28 @@ dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.C
 - 拡張は API キーの持ち主のテナントに登録されます。別のテナントにするときは `/tenant-id` を指定してください。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます。
 - スタイルは `vvcsc_core` と `vvcsc_{年}` の組で登録されます（`/prefix` で変更可）。今回の範囲から外れた年（過ぎた年など）を消すときは `/prune` を付けます。接頭辞で始まるものだけが対象です。
 
-## 設定ファイル
+## パラメーター
 
-固定の設定は JSON ファイルにして `/config` で渡せます。書式は [examples/calendarstyle.json](../examples/calendarstyle.json) を参照してください。コマンドラインのオプションが設定ファイルより優先されます。相対パスは設定ファイルのあるフォルダ基準です。
+固定の設定は、配布フォルダの `App_Data/Parameters`（`Holidays.json`・`Style.json`・`Placement.json`）に置きます。Pleasanter 本体の `App_Data/Parameters` と同じ構成で、既定値のファイルが ZIP に入っています。項目は [README](../README.md) を参照してください。コマンドラインのオプションがパラメーターより優先されます。
 
-```bat
-dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.CalendarStyleCreator.dll" generate /config "%HOME%\site\wwwroot\CalendarStyleCreator\calendarstyle.json"
+```text
+wwwroot/CalendarStyleCreator/
+└── App_Data/Parameters/
+    ├── Holidays.json    取得元（Google カレンダー・iCal・CSV・年の範囲）
+    ├── Style.json       接頭辞・週の開始曜日・色
+    └── Placement.json   出力先・本体のパス・URL・テナント・サイト・Prune
 ```
 
-認証が必要な iCal の資格情報は、設定ファイルに書かず、環境変数の名前で参照します（`bearerTokenEnv`、`basicUserEnv`、`basicPasswordEnv`）。
+認証が必要な iCal の資格情報は、パラメーターに書かず、環境変数の名前で参照します（`BearerTokenEnv`、`BasicUserEnv`、`BasicPasswordEnv`）。ZIP を展開し直すとパラメーターは既定に戻るため、更新時は編集したファイルを残してください。
+
+標準カレンダーの土日は列の位置で指定します。Pleasanter 側の週の開始曜日を変えたら、`Style.json` の `FirstDayOfWeek` も合わせて再実行してください。
 
 ## 環境変数
 
 | 名前 | 用途 |
 | --- | --- |
 | `CALENDARSTYLE_PLEASANTER_API_KEY` | `register` で使う Pleasanter の API キー |
-| `CALENDARSTYLE_ICAL_BEARER_TOKEN` | 認証付き iCal の Bearer トークン（設定ファイルで名前を指定しない URL に使う） |
+| `CALENDARSTYLE_ICAL_BEARER_TOKEN` | 認証付き iCal の Bearer トークン（パラメーターで環境変数名を指定しない URL に使う） |
 | `CALENDARSTYLE_ICAL_BASIC_USER` / `CALENDARSTYLE_ICAL_BASIC_PASSWORD` | 同じく Basic 認証 |
 
 Google カレンダー（公開）への通信が必要です。ファイアウォールで外向きの通信を制限している場合は `calendar.google.com` への https を許可してください。CSV だけを使う場合（`/calendar-id none`）は外部通信は不要です。

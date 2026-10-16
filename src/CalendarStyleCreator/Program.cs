@@ -17,10 +17,11 @@ public static class Program
             {
                 RuntimeLog.WriteLine($"""
                     CalendarStyleCreator {typeof(Program).Assembly.GetName().Version!.ToString(3)} - Pleasanter calendar holiday style generator
-                    Usage: CalendarStyleCreator <action> [/config <file>] [options]
+                    Usage: CalendarStyleCreator <action> [options]
                       generate                    Write ExtendedStyles/<name>.css (all sites) to /output, or under /p, or beside this tool
                       register                    Register the extended style through the Extensions API; requires /url
-                    /config <file.json>         Settings file (see README). Command-line options override it.
+                    Fixed settings: App_Data/Parameters/Holidays.json, Style.json, Placement.json beside this tool (see README). Command-line options override them.
+                    /parameters <folder>        Use another Parameters folder
                     Options (same style as Implem.CodeDefiner: start with /, a value follows):
                       /calendar-id <id,...>       Google Calendar IDs, comma separated (public calendars; no API key)
                                                   Default: {GoogleCalendarHolidaySource.JapaneseHolidays}; "none" = CSV only
@@ -29,6 +30,7 @@ public static class Program
                       /csv <file>                 Extra holidays from a CSV file ("date,name" per line); overrides Google on the same date
                       /from <year> /to <year>     Output year range for holidays and weekends (default: this year and next)
                       /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
+                      /first-day-of-week <0-6>    First day of the week of the standard calendar: 0=Sunday .. 6=Saturday (default: 1, as in General.json)
                       /prefix <text>              Name prefix of the generated styles (default: {Options.DefaultPrefix}). Styles: <prefix>core and <prefix><year>
                       /prune                      Delete managed styles (names starting with the prefix) that are no longer generated
                       /tenant-id <id>             register: tenant of the extensions (default: the tenant of the API key's user)
@@ -45,7 +47,7 @@ public static class Program
             var fromYear = options.FromYear ?? thisYear;
             var toYear = options.ToYear ?? thisYear + 1;
             var holidays = (await LoadHolidays(options, fromYear, toYear, cancel.Token)).Where(h => h.Date.Year >= fromYear && h.Date.Year <= toYear).ToList();
-            var set = StyleSet.Create(options.Prefix, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear), options.SiteIds, options.Prune);
+            var set = StyleSet.Create(options.Prefix, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear, options.FirstDayOfWeek), options.SiteIds, options.Prune);
             IStyleSink sink = options.Action == "generate"
                 ? new FileStyleSink(options.Output!)
                 : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."), options.TenantId);

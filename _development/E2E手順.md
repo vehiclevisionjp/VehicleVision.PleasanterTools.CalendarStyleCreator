@@ -43,14 +43,15 @@
    node ../../_development/e2e/verify.mjs full     out shots mon
    ```
 
-5. 週の開始曜日を日曜に変えて再確認する（ラベルに `sun` を含める）。
+5. 週の開始曜日を日曜に変えて再確認する（ラベルに `sun` を含める）。標準カレンダーの土日は列の位置で指定するため、生成側も `/first-day-of-week 0` にして `out0` へ出力し、そちらを配置・検証する。
 
    ```powershell
    cd ../..
-   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out -FirstDayOfWeek 0
+   dotnet src/CalendarStyleCreator/bin/Release/net10.0/VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output temp/e2e/out0 /csv temp/e2e/extra.csv /first-day-of-week 0
+   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out0 -FirstDayOfWeek 0
    cd temp/e2e
-   node ../../_development/e2e/verify.mjs standard out shots sun
-   node ../../_development/e2e/verify.mjs full     out shots sun
+   node ../../_development/e2e/verify.mjs standard out0 shots sun
+   node ../../_development/e2e/verify.mjs full     out0 shots sun
    ```
 
 6. Extensions API 方式を確認する。`extensions-api.mjs` がテナントの `AllowExtensionsApi` を有効にし、Administrator の API キーを作って `/api/extensions/` の create・get・update・delete を呼ぶ（動作確認用の拡張は消す）。API キーは `temp/e2e/e2e-apikey.txt` に書かれる（管理外）。その後 `register` で登録し、ファイルの `.css` を外して再起動してから手順 4 を繰り返す。

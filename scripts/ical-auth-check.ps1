@@ -37,18 +37,21 @@ http {
         if ($text -match 'tok-123|pass123|bad-token') { throw 'A credential leaked into console output.' }
         $script:count++
     }
-    $config = Join-Path $work 'config.json'
-    @{ calendars = @(); from = 2026; to = 2026; output = (Join-Path $work 'out')
-       icalUrls = @(@{ url = "$base/bearer/team.ics"; bearerTokenEnv = 'T_TOKEN' }, @{ url = "$base/basic/team.ics"; basicUserEnv = 'T_USER'; basicPasswordEnv = 'T_PASS' }) } | ConvertTo-Json -Depth 5 | Set-Content $config -Encoding utf8
+    # Pleasanter の App_Data/Parameters に倣ったパラメーターのフォルダ。URL ごとに認証の環境変数名を指定する。
+    $config = Join-Path $work 'Parameters'
+    New-Item -ItemType Directory -Force $config | Out-Null
+    @{ GoogleCalendarIds = @(); FromYear = 2026; ToYear = 2026
+       IcalUrls = @(@{ Url = "$base/bearer/team.ics"; BearerTokenEnv = 'T_TOKEN' }, @{ Url = "$base/basic/team.ics"; BasicUserEnv = 'T_USER'; BasicPasswordEnv = 'T_PASS' }) } | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $config 'Holidays.json') -Encoding utf8
+    @{ OutputPath = (Join-Path $work 'out') } | ConvertTo-Json | Set-Content (Join-Path $config 'Placement.json') -Encoding utf8
     $env:T_TOKEN = 'tok-123'; $env:T_USER = 'user'; $env:T_PASS = 'pass123'
-    Run @('generate', '/config', $config) 0 'Done\. 1 holiday'
+    Run @('generate', '/parameters', $config) 0 'Done\. 1 holiday'
     if ((Get-Content (Join-Path $work 'out/vvcsc_2026.css') -Raw -Encoding utf8) -notmatch 'Private holiday') { throw 'Holiday from the authenticated iCal is missing.' }
     $env:T_TOKEN = 'bad-token'
-    Run @('generate', '/config', $config) 2 'HTTP 401'
+    Run @('generate', '/parameters', $config) 2 'HTTP 401'
     $env:T_TOKEN = 'tok-123'; $env:T_PASS = 'wrong'
-    Run @('generate', '/config', $config) 2 'HTTP 401'
+    Run @('generate', '/parameters', $config) 2 'HTTP 401'
     $env:T_PASS = 'pass123'; $env:T_TOKEN = $null
-    Run @('generate', '/config', $config) 2 'T_TOKEN is not set'
+    Run @('generate', '/parameters', $config) 2 'T_TOKEN is not set'
     Run @('generate', '/calendar-id', 'none', '/ical-url', "$base/bearer/team.ics", '/output', (Join-Path $work 'o1')) 2 'HTTP 401'
     $env:CALENDARSTYLE_ICAL_BEARER_TOKEN = 'tok-123'
     Run @('generate', '/calendar-id', 'none', '/ical-url', "$base/bearer/team.ics", '/from', '2026', '/to', '2026', '/output', (Join-Path $work 'o2')) 0 'Done\. 1 holiday'
