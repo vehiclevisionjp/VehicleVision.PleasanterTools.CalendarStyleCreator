@@ -17,13 +17,15 @@ public static class Program
             {
                 RuntimeLog.WriteLine($"""
                     CalendarStyleCreator {typeof(Program).Assembly.GetName().Version!.ToString(3)} - Pleasanter calendar holiday style generator
-                    Usage: CalendarStyleCreator <action> (/csv <file> | /calendar-id <id>) [options]
+                    Usage: CalendarStyleCreator <action> [options]
                       generate                    Write an extended style file (ExtendedStyles/<name>.json); requires /output
                       register                    Register the extended style through the Extensions API; requires /url
                     Options (same style as Implem.CodeDefiner: start with /, a value follows):
-                      /csv <file>                 Holidays from a CSV file ("date,name" per line)
-                      /calendar-id <id>           Holidays from a Google Calendar (API key: env {Options.GoogleApiKeyVariable})
-                      /from <year> /to <year>     Year range for the Google Calendar (default: this year and next)
+                      /calendar-id <id,...>       Google Calendar IDs, comma separated (public calendars; no API key)
+                                                  Default: {GoogleCalendarHolidaySource.JapaneseHolidays}; "none" = CSV only
+                      /csv <file>                 Extra holidays from a CSV file ("date,name" per line); overrides Google on the same date
+                      /from <year> /to <year>     Output year range for holidays and weekends (default: this year and next)
+                      /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
                       /name <name>                Extended style name (default: {Options.DefaultName})
                       /site-id <id,...>           Apply to these sites only (default: all sites)
                       /output <folder>            generate: ExtendedStyles folder
@@ -31,8 +33,12 @@ public static class Program
                     """);
                 return 0;
             }
-            var holidays = await LoadHolidays(options, cancel.Token);
-            var style = new StyleDefinition(options.Name, "Holiday highlight for the calendar view (generated)", options.SiteIds, CssGenerator.Generate(holidays));
+            // 出力する年の範囲。取得元（Google・CSV）の休日と、標準カレンダー用の土日の指定範囲を同じにする。
+            var thisYear = DateTime.Now.Year;
+            var fromYear = options.FromYear ?? thisYear;
+            var toYear = options.ToYear ?? thisYear + 1;
+            var holidays = (await LoadHolidays(options, fromYear, toYear, cancel.Token)).Where(h => h.Date.Year >= fromYear && h.Date.Year <= toYear).ToList();
+            var style = new StyleDefinition(options.Name, "Holiday highlight for the calendar view (generated)", options.SiteIds, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear));
             IStyleSink sink = options.Action == "generate"
                 ? new FileStyleSink(options.Output!)
                 : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."));
@@ -52,18 +58,11 @@ public static class Program
         }
     }
 
-    private static async Task<IReadOnlyList<Holiday>> LoadHolidays(Options options, CancellationToken cancel)
+    private static async Task<IReadOnlyList<Holiday>> LoadHolidays(Options options, int fromYear, int toYear, CancellationToken cancel)
     {
         var sources = new List<IHolidaySource>();
-        if (options.CalendarId != null)
-        {
-            var thisYear = DateTime.Now.Year;
-            sources.Add(new GoogleCalendarHolidaySource(
-                options.CalendarId,
-                Environment.GetEnvironmentVariable(Options.GoogleApiKeyVariable) ?? throw new UserError($"Set {Options.GoogleApiKeyVariable}."),
-                options.FromYear ?? thisYear,
-                options.ToYear ?? thisYear + 1));
-        }
+        foreach (var calendarId in options.CalendarIds)
+            sources.Add(new GoogleCalendarHolidaySource(calendarId, fromYear, toYear));
         // 同じ日付が複数の取得元にある場合は後勝ち（CSV で Google の名称や追加休日を上書きできる）。
         if (options.CsvPath != null) sources.Add(new CsvHolidaySource(options.CsvPath));
         var holidays = new List<Holiday>();

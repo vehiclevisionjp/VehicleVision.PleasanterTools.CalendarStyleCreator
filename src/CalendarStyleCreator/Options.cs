@@ -2,18 +2,17 @@ using System.Globalization;
 
 namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 
-public sealed record Options(string Action, string? CsvPath, string? CalendarId, int? FromYear, int? ToYear, string Name, IReadOnlyList<long> SiteIds, string? Output, string? PleasanterUrl)
+public sealed record Options(string Action, string? CsvPath, IReadOnlyList<string> CalendarIds, int? FromYear, int? ToYear, string Name, IReadOnlyList<long> SiteIds, string? Output, string? PleasanterUrl, CalendarTheme Theme)
 {
     public const string DefaultName = "CalendarHolidays";
-    // 資格情報はコマンドラインへ置かず環境変数から読む（履歴・プロセス一覧への露出を避ける）。
-    public const string GoogleApiKeyVariable = "CALENDARSTYLE_GOOGLE_API_KEY";
+    // Pleasanter の API キーはコマンドラインへ置かず環境変数から読む（履歴・プロセス一覧への露出を避ける）。
     public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
 
-    private static readonly string[] ValueOptions = ["csv", "calendar-id", "from", "to", "name", "site-id", "output", "url"];
+    private static readonly string[] ValueOptions = ["csv", "calendar-id", "from", "to", "name", "site-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
 
     public static Options Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", null, null, null, null, DefaultName, [], null, null);
+        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", null, [], null, null, DefaultName, [], null, null, new());
         var action = args[0];
         if (action is not ("generate" or "register")) throw new UserError("Unknown action. Use generate or register.");
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -35,8 +34,17 @@ public sealed record Options(string Action, string? CsvPath, string? CalendarId,
         var sites = (V("site-id") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(s => long.TryParse(s, NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new UserError("Site ID must be a positive number."))
             .Distinct().ToList();
-        var options = new Options(action, V("csv"), V("calendar-id"), Year("from"), Year("to"), V("name") ?? DefaultName, sites, V("output"), V("url"));
-        if (options.CsvPath == null && options.CalendarId == null) throw new UserError("Specify /csv or /calendar-id.");
+        // 既定は日本の祝日カレンダー。複数はカンマ区切り。none で Google カレンダーを使わない（CSV のみ）。
+        var calendars = V("calendar-id") switch
+        {
+            null => [GoogleCalendarHolidaySource.JapaneseHolidays],
+            "none" => [],
+            var list => list.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.Ordinal).ToList(),
+        };
+        var defaults = new CalendarTheme();
+        var options = new Options(action, V("csv"), calendars, Year("from"), Year("to"), V("name") ?? DefaultName, sites, V("output"), V("url"),
+            new CalendarTheme(V("holiday-bg") ?? defaults.HolidayBackground, V("saturday-bg") ?? defaults.SaturdayBackground, V("holiday-text") ?? defaults.HolidayText, V("saturday-text") ?? defaults.SaturdayText).Validate());
+        if (options.CsvPath == null && options.CalendarIds.Count == 0) throw new UserError("Specify /csv or /calendar-id.");
         if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
         if (action == "generate" && options.Output == null) throw new UserError("generate requires /output.");
         if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url.");

@@ -8,4 +8,6 @@ Release ビルド、単体チェック、`npm run lint:md` を実行し、結果
 
 本体参照ソースはサブモジュールに固定し、配布物へ含めません。Google の API キー・Pleasanter の API キー・実運用サイトの設定データをコミットしないでください。
 
+共有メモリは Internal の `.ClaudeMemory` リポジトリに置き、正式な仕様と規約は本体の資料へ残します。
+
 本リポジトリは AGPL-3.0-or-later です。

@@ -3,8 +3,10 @@ using System.Globalization;
 namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 
 /// <summary>
-/// 「日付,名前」の CSV から休日を読む。日付は yyyy-MM-dd / yyyy/M/d。ヘッダー行・空行・# 始まりの行は読み飛ばす。
-/// 名前に , を含める場合は "..." で囲む（"" は " のエスケープ）。
+/// 「日付,名前」の CSV から休日を読む。内閣府「国民の祝日」CSV（syukujitsu.csv）の形式をそのまま読める
+/// （https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv、Shift_JIS・ヘッダー 1 行・y/M/d、1955 年〜、確認 2026-10-16）。
+/// 文字コードは UTF-8（BOM 有無）を優先し、UTF-8 として不正なら Shift_JIS（CP932）として読む。
+/// 日付は yyyy-MM-dd / yyyy/M/d。ヘッダー行・空行・# 始まりの行は読み飛ばす。名前に , を含める場合は "..." で囲む（"" は " のエスケープ）。
 /// </summary>
 public sealed class CsvHolidaySource(string path) : IHolidaySource
 {
@@ -13,7 +15,17 @@ public sealed class CsvHolidaySource(string path) : IHolidaySource
     public async Task<IReadOnlyList<Holiday>> GetHolidaysAsync(CancellationToken cancel)
     {
         if (!File.Exists(path)) throw new UserError("CSV file was not found.");
-        return Parse(await File.ReadAllTextAsync(path, cancel));
+        return Parse(Decode(await File.ReadAllBytesAsync(path, cancel)));
+    }
+
+    public static string Decode(byte[] bytes)
+    {
+        try { return new System.Text.UTF8Encoding(false, true).GetString(bytes); }
+        catch (System.Text.DecoderFallbackException)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            return System.Text.Encoding.GetEncoding(932).GetString(bytes);
+        }
     }
 
     public static IReadOnlyList<Holiday> Parse(string text)

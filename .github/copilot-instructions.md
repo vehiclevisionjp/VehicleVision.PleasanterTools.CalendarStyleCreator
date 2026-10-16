@@ -8,7 +8,7 @@
 
 `develop` が開発基準、`master` はリリース用。初期配置後は Issue → develop から作業ブランチ → Release ビルドと影響するテスト → push → Draft PR（WIP:、Closes #N）。
 
-正式な要件は `_documents/` に置く。共通規約はこのファイルが単一の参照元。AGENTS.md と CLAUDE.md から参照する。資格情報は記録しない。
+正式な要件は `_documents/` に置く。共通規約はこのファイルが単一の参照元。AGENTS.md と CLAUDE.md から参照する。共有メモリは Internal の `VehicleVision.PleasanterTools.CalendarStyleCreator.ClaudeMemory` を使い、資格情報は記録しない。
 
 README は利用者向けの製品説明と操作の入口。ビルド・テスト・CI・設計・エージェント・リリースは開発者向け資料へ分離する。出典確認・実機検証の記録は `_development/` に置き、利用手順へ混ぜない。文書を追加したら `_documents/README.md` の該当する入口から案内する。
 
