@@ -76,15 +76,19 @@ public static class CssGenerator
 
         // 標準カレンダーの .day は 24px 幅の中央寄せなので、祝日名を足すと数字に重なる。名称のある祝日は幅を自動にして数字の右に並べる。
         Rule(byDate.Where(h => h.Value.Length > 0).Select(h => MonthlyCell(h.Key) + " .day"), "width: auto; min-width: 24px; padding: 0 4px; justify-content: flex-start;");
+        Rule(byDate.Where(h => h.Value.Length > 0).Select(h => WeeklyCell(h.Key)), "position: relative;");
         foreach (var (date, name) in byDate)
         {
             if (name.Length == 0) continue;
             var label = $"content: \"{EscapeString(name)}\"; margin-left: 0.5em; font-size: 0.85em; font-weight: 600; white-space: nowrap;";
             var attribute = $"[data-date=\"{FullCalendarDate(date)}\"]";
             Rule([MonthlyCell(date) + " .day::after"], label);
-            // 標準カレンダーの週表示のセルには日付の数字（.day）がないため、セルの先頭に祝日名を出す。
-            Rule([WeeklyCell(date) + "::before"], label + $" display: block; margin: 0 0 0.25em 0; color: {theme.HolidayText};");
-            Rule([$"{Full} td.fc-daygrid-day{attribute}:not(.fc-day-other) .fc-daygrid-day-top::after", $"{Full} th.fc-col-header-cell{attribute} .fc-col-header-cell-cushion::after", $"{Full} .fc-list-day{attribute} .fc-list-day-text::after"], label);
+            // 標準カレンダーの週表示のセルには日付の数字（.day）がない。祝日名はセルの流れに入れず（入れると、その日だけ予定が下がり、日をまたぐ予定のバーがずれる）、
+            // セルの右上へ絶対配置で重ねる（予定のバーより手前に出し、読めるようにセルと同じ背景を敷く）。
+            Rule([WeeklyCell(date) + "::before"], label + $" position: absolute; z-index: 1; right: 0.4em; top: 0.25em; margin: 0; padding: 0 0.25em; border-radius: 3px; background-color: {theme.HolidayBackground}; pointer-events: none; color: {theme.HolidayText};");
+            // 月表示の .fc-daygrid-day-top は flex の row-reverse（数字が右、祝日名が左）。数字は上下に余白を持つため、祝日名も縦中央に揃える。
+            Rule([$"{Full} td.fc-daygrid-day{attribute}:not(.fc-day-other) .fc-daygrid-day-top::after"], label + " margin-left: 0; margin-right: 0.25em; align-self: center;");
+            Rule([$"{Full} th.fc-col-header-cell{attribute} .fc-col-header-cell-cushion::after", $"{Full} .fc-list-day{attribute} .fc-list-day-text::after"], label);
         }
         return css.ToString();
     }
