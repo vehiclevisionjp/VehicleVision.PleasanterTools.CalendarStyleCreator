@@ -46,7 +46,7 @@ public static class Program
                 ? new FileStyleSink(options.Output!)
                 : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."));
             await sink.WriteAsync(style, cancel.Token);
-            RuntimeLog.WriteLine($"Done. {holidays.Count} holiday(s).");
+            RuntimeLog.WriteLine($"Done. {holidays.Select(h => h.Date).Distinct().Count()} holiday(s).");
             return 0;
         }
         catch (UserError e)

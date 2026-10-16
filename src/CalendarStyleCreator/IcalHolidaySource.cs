@@ -42,14 +42,15 @@ public sealed record IcalAuth(string? BearerToken = null, string? BasicUser = nu
 
 /// <summary>
 /// URL で指定した iCal（.ics）から休日を取得する。終日予定の DTSTART を日付として使い、RFC 5545 の折り返し行は連結する。
-/// https のみ許可（資格情報の平文送信を避ける）。認証を付ける場合はリダイレクトを追従せず、別ホストへ資格情報を送らない。
+/// https のみ許可（資格情報の平文送信を避ける。ループバックの検証用だけ http 可）。認証を付ける場合はリダイレクトを追従せず、別ホストへ資格情報を送らない。
 /// URL 自体が秘密（Google の非公開 iCal アドレスなど）の場合があるため、URL はメッセージに出さない。
 /// </summary>
 public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, int toYear, HttpClient? client = null) : IHolidaySource
 {
     public static void ValidateUrl(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps) throw new UserError("iCal URL must be an absolute https URL.");
+        // https のみ。ループバック（検証用の手元のサーバー）だけ http を許可する。
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback))) throw new UserError("iCal URL must be an absolute https URL (http is allowed only for localhost).");
     }
 
     public async Task<IReadOnlyList<Holiday>> GetHolidaysAsync(CancellationToken cancel)
@@ -64,7 +65,7 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
         using (response)
         {
             if ((int)response.StatusCode is >= 300 and < 400 && header != null) throw new UserError("The iCal URL redirected; credentials are not sent to redirects. Use the final URL.");
-            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden) throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}. Check the credentials ({Options.IcalBearerTokenVariable} or {Options.IcalBasicUserVariable}).");
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden) throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}. Check the credentials for this URL (environment variables, see help).");
             if (!response.IsSuccessStatusCode) throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}.");
             return Parse(await response.Content.ReadAsStringAsync(cancel), fromYear, toYear);
         }
