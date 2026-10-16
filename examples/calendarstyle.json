@@ -1,0 +1,25 @@
+{
+  // calendarstyle.json の例。コマンドラインのオプションは、この設定より優先される。
+  // 資格情報はファイルに書かず、環境変数の「名前」で参照する。
+  "calendars": [
+    "ja.japanese.official#holiday@group.v.calendar.google.com"
+  ],
+  "icalUrls": [
+    "https://example.com/company-holidays.ics",
+    { "url": "https://example.com/private/team.ics", "bearerTokenEnv": "TEAM_ICAL_TOKEN" },
+    { "url": "https://example.com/other.ics", "basicUserEnv": "OTHER_ICAL_USER", "basicPasswordEnv": "OTHER_ICAL_PASSWORD" }
+  ],
+  "csv": ["holidays.csv"],
+  "from": 2026,
+  "to": 2027,
+  "name": "CalendarHolidays",
+  "siteIds": [],
+  "output": "C:\\web\\pleasanter\\Implem.Pleasanter\\App_Data\\Parameters\\ExtendedStyles",
+  "pleasanterUrl": "https://pleasanter.example.com",
+  "colors": {
+    "holidayBackground": "#fff0f3",
+    "saturdayBackground": "#e8f3ff",
+    "holidayText": "#b00020",
+    "saturdayText": "#1565c0"
+  }
+}

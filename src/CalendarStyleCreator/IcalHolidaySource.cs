@@ -10,13 +10,28 @@ public sealed record IcalAuth(string? BearerToken = null, string? BasicUser = nu
 {
     public bool IsEmpty => BearerToken == null && BasicUser == null;
 
-    public static IcalAuth FromEnvironment(Func<string, string?> get)
+    /// <summary>
+    /// 取得先の認証を環境変数から組み立てる。環境変数名を明示した取得先（設定ファイル）は、未設定ならエラーにする。
+    /// 名前を省略した取得先は共通の既定の環境変数を見て、未設定なら認証なし。
+    /// </summary>
+    public static IcalAuth FromEnvironment(Func<string, string?> get, IcalEndpoint? endpoint = null)
     {
-        var token = get(Options.IcalBearerTokenVariable);
-        var user = get(Options.IcalBasicUserVariable);
-        if (!string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(user)) throw new UserError($"Set either {Options.IcalBearerTokenVariable} or {Options.IcalBasicUserVariable}, not both.");
-        if (!string.IsNullOrEmpty(user)) return new(BasicUser: user, BasicPassword: get(Options.IcalBasicPasswordVariable) ?? "");
-        return new(BearerToken: string.IsNullOrEmpty(token) ? null : token);
+        var explicitNames = endpoint?.HasAuthReference == true;
+        var tokenName = endpoint?.BearerTokenEnv ?? (explicitNames ? null : Options.IcalBearerTokenVariable);
+        var userName = endpoint?.BasicUserEnv ?? (explicitNames ? null : Options.IcalBasicUserVariable);
+        var passwordName = endpoint?.BasicPasswordEnv ?? (explicitNames ? null : Options.IcalBasicPasswordVariable);
+        string? Read(string? name, bool required)
+        {
+            if (name == null) return null;
+            var value = get(name);
+            if (string.IsNullOrEmpty(value) && required) throw new UserError($"Environment variable {name} is not set.");
+            return string.IsNullOrEmpty(value) ? null : value;
+        }
+        var token = Read(tokenName, explicitNames);
+        var user = Read(userName, explicitNames);
+        if (token != null && user != null) throw new UserError($"Set either {tokenName} or {userName}, not both.");
+        if (user != null) return new(BasicUser: user, BasicPassword: Read(passwordName, false) ?? "");
+        return new(BearerToken: token);
     }
 
     public AuthenticationHeaderValue? ToHeader() =>

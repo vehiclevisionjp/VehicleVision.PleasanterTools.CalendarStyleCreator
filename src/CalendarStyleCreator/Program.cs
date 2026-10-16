@@ -17,9 +17,10 @@ public static class Program
             {
                 RuntimeLog.WriteLine($"""
                     CalendarStyleCreator {typeof(Program).Assembly.GetName().Version!.ToString(3)} - Pleasanter calendar holiday style generator
-                    Usage: CalendarStyleCreator <action> [options]
+                    Usage: CalendarStyleCreator <action> [/config <file>] [options]
                       generate                    Write an extended style file (ExtendedStyles/<name>.json); requires /output
                       register                    Register the extended style through the Extensions API; requires /url
+                    /config <file.json>         Settings file (see README). Command-line options override it.
                     Options (same style as Implem.CodeDefiner: start with /, a value follows):
                       /calendar-id <id,...>       Google Calendar IDs, comma separated (public calendars; no API key)
                                                   Default: {GoogleCalendarHolidaySource.JapaneseHolidays}; "none" = CSV only
@@ -65,10 +66,13 @@ public static class Program
         var sources = new List<IHolidaySource>();
         foreach (var calendarId in options.CalendarIds)
             sources.Add(new GoogleCalendarHolidaySource(calendarId, fromYear, toYear));
-        var auth = IcalAuth.FromEnvironment(Environment.GetEnvironmentVariable);
-        foreach (var url in options.IcalUrls) sources.Add(new IcalHolidaySource(url, auth.IsEmpty ? null : auth, fromYear, toYear));
+        foreach (var endpoint in options.IcalUrls)
+        {
+            var auth = IcalAuth.FromEnvironment(Environment.GetEnvironmentVariable, endpoint);
+            sources.Add(new IcalHolidaySource(endpoint.Url, auth.IsEmpty ? null : auth, fromYear, toYear));
+        }
         // 同じ日付が複数の取得元にある場合は後勝ち（CSV で Google の名称や追加休日を上書きできる）。
-        if (options.CsvPath != null) sources.Add(new CsvHolidaySource(options.CsvPath));
+        foreach (var csv in options.CsvPaths) sources.Add(new CsvHolidaySource(csv));
         var holidays = new List<Holiday>();
         foreach (var source in sources) holidays.AddRange(await source.GetHolidaysAsync(cancel));
         return holidays;

@@ -2,7 +2,7 @@
 
 Pleasanter のカレンダー表示で休日を色分け・名称表示するための CSS を生成し、拡張スタイルとして配置する .NET 10 コンソールアプリです。休日は Google カレンダーのカレンダー ID と CSV から取得します。コンソール出力は英語固定です。
 
-> 開発初期です。動作するのは、Google カレンダー（公開）と CSV からの取得、およびファイル配置（`generate`）です。Extensions API 登録（`register`）は骨格だけで未実装です。
+> 開発初期です。Google カレンダー・iCal URL・CSV からの取得、ファイル配置（`generate`）、Extensions API 登録（`register`）を実装済みです。Pleasanter 実機での確認結果は [検証記録](_development/検証記録.md) を参照してください。
 
 標準カレンダーと FullCalendar の両方に、次を表示します。
 
@@ -17,7 +17,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 | 方式 | コマンド | 内容 |
 | --- | --- | --- |
 | ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/{名前}.json` を書き出す |
-| API 登録 | `register` | Extensions API で拡張スタイルを登録・更新する（未実装） |
+| API 登録 | `register` | Extensions API で拡張スタイルを登録・更新する（同名は更新） |
 
 ## 使う
 
@@ -56,6 +56,31 @@ https のみ使えます。認証付きの場合はリダイレクトを追従�
 CSV は [内閣府の「国民の祝日」CSV](https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv) をそのまま読めます（Shift_JIS・UTF-8 どちらも可）。自作する場合は `日付,名前` の 1 行 1 休日です（例: [examples/holidays.csv](examples/holidays.csv)）。
 
 標準カレンダーの土日は日付ごとに指定するため、出力範囲の年を過ぎると色が付かなくなります。年を跨ぐ前に再生成してください。
+
+## API 登録
+
+```powershell
+$env:CALENDARSTYLE_PLEASANTER_API_KEY = "..."
+dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url https://pleasanter.example.com
+```
+
+テナントの拡張機能 API（`AllowExtensionsApi`）を有効にし、拡張機能を管理できるユーザーの API キーを使います。同名の拡張スタイルがあれば更新し、内容が同じなら何もしません。
+
+## 設定ファイル
+
+固定の設定は JSON にして `/config` で渡せます（例: [examples/calendarstyle.json](examples/calendarstyle.json)）。コマンドラインのオプションが設定ファイルより優先され、相対パスは設定ファイルのあるフォルダ基準です。コメントと末尾カンマも書けます。
+
+```powershell
+dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /config calendarstyle.json
+```
+
+認証付きの iCal は、URL ごとに環境変数の名前を指定します（資格情報そのものは書けません）。
+
+```json
+{ "icalUrls": [ { "url": "https://example.com/team.ics", "bearerTokenEnv": "TEAM_ICAL_TOKEN" } ] }
+```
+
+App Service への配置は [App Service への配置](_documents/AppService導入手順.md) を参照してください。
 
 ## 開発者向け
 

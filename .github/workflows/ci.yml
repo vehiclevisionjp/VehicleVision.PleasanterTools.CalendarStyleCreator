@@ -43,3 +43,51 @@ jobs:
           name: CalendarStyleCreator
           path: artifacts/package/*.zip*
           if-no-files-found: error
+
+  appservice-layout:
+    name: App Service 配置（${{ matrix.rid }}）
+    needs: build-test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x86
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: CalendarStyleCreator
+          path: artifacts/package
+      - name: Windows x86 のランタイムを用意する
+        if: matrix.rid == 'win-x86'
+        shell: pwsh
+        run: |
+          $installerPath = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+          Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile $installerPath
+          pwsh -NoProfile -File $installerPath -Runtime dotnet -Channel 10.0 -Architecture x86 -InstallDir (Join-Path $env:RUNNER_TEMP 'dotnet-x86') -NoPath
+          if ($LASTEXITCODE -ne 0) { throw 'Windows x86 runtime installation failed.' }
+      - shell: pwsh
+        run: |
+          $dotnetHostPath = if ('${{ matrix.rid }}' -eq 'win-x86') { Join-Path $env:RUNNER_TEMP 'dotnet-x86/dotnet.exe' } else { 'dotnet' }
+          & $dotnetHostPath --info
+          ./scripts/appservice-smoke.ps1 -Platform '${{ matrix.rid }}' -DotnetPath $dotnetHostPath
+  docker-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: docker build -t calendarstyle-ci .
+      - run: docker run --rm calendarstyle-ci help
