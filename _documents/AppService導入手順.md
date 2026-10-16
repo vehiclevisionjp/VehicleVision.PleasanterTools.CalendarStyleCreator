@@ -30,7 +30,7 @@ Linux の例です。
 dotnet /home/site/wwwroot/CalendarStyleCreator/VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output /home/site/wwwroot/Implem.Pleasanter/App_Data/Parameters/ExtendedStyles
 ```
 
-パラメーターファイルの読み込み時期は本体の設定によります。反映されない場合はアプリを再起動してください。本体の再配置で `App_Data` が置き換わる運用では、再配置のたびに再実行するか、次の API 登録を使います。
+拡張スタイルは本体の起動時に読み込まれるため、配置後にアプリを再起動してください。ファイルの `.css` は全サイトに適用されます（サイトを限定するときは次の API 登録）。本体の再配置で `App_Data` が置き換わる運用では、再配置のたびに再実行するか、次の API 登録を使います。
 
 ## API 登録（register）
 
@@ -43,6 +43,7 @@ dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.C
 
 - テナント管理で拡張機能 API（`AllowExtensionsApi`）を有効にします。
 - API キーは、拡張機能を管理できるユーザー（テナント管理者など）のものを使います。App Service のアプリ設定に `CALENDARSTYLE_PLEASANTER_API_KEY` として登録し、コマンドラインには書かないでください。
+- `/site-id` で適用サイトを限定できます。登録後はアプリの再起動が必要です。
 - 同名の拡張スタイルがあれば更新し、なければ作成します。内容が同じなら何もしません。
 - URL は https が必要です（localhost の検証用だけ http を許可）。
 

@@ -60,6 +60,9 @@ using (var fakeClient = new HttpClient(fake))
     catch (UserError e) { Check(e.Message.Contains("401") && !e.Message.Contains("secret") && !e.Message.Contains(FakeUrl), "401 reports status without leaking URL or token"); }
 }
 
+Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/site-id", "5"]), "generate rejects /site-id (file placement is all sites)");
+Check(Options.Parse(["register", "/csv", "h.csv", "/url", "https://pl.example.com", "/site-id", "5"]).SiteIds.SequenceEqual([5]), "register accepts /site-id");
+
 // Config file
 var configDir = Path.Combine(Path.GetTempPath(), "csc-cfg-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(configDir);
@@ -75,12 +78,12 @@ try
           "output": "out", "colors": { "saturdayBackground": "#abcdef" }
         }
         """);
-    var fromConfig = Options.Parse(["generate", "/config", configPath]);
+    var fromConfig = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com"]);
     Check(fromConfig.CalendarIds.Count == 2 && fromConfig.IcalUrls.Count == 2 && fromConfig.IcalUrls[1].BasicUserEnv == "U", "Config arrays and per-URL auth names");
     Check(fromConfig.CsvPaths.SequenceEqual([Path.Combine(configDir, "holidays.csv")]) && fromConfig.Output == Path.Combine(configDir, "out"), "Config relative paths resolve from the config folder");
     Check(fromConfig.Name == "FromConfig" && fromConfig.SiteIds.SequenceEqual([3, 4]) && fromConfig.FromYear == 2026 && fromConfig.ToYear == 2027, "Config scalar values");
     Check(fromConfig.Theme.SaturdayBackground == "#abcdef" && fromConfig.Theme.HolidayBackground == new CalendarTheme().HolidayBackground, "Config colors override only given keys");
-    var overridden = Options.Parse(["generate", "/config", configPath, "/name", "Cli", "/calendar-id", "none", "/site-id", "9"]);
+    var overridden = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com", "/name", "Cli", "/calendar-id", "none", "/site-id", "9"]);
     Check(overridden.Name == "Cli" && overridden.CalendarIds.Count == 0 && overridden.SiteIds.SequenceEqual([9]), "Command line overrides the config file");
     File.WriteAllText(configPath, "{ \"calendars\": [] , \"csv\": [\"h.csv\"], \"output\": \"o\" }");
     Check(Options.Parse(["generate", "/config", configPath]).CalendarIds.Count == 0, "Empty calendars array disables Google calendars");
@@ -105,6 +108,8 @@ Check(css.Contains("content: \"A2\"") && !css.Contains("content: \"A\""), "Last 
 Check(css.Contains("[data-id=\"2026/1/3\"]") && css.Contains("[data-id=\"2026/1/4\"]"), "Saturday 2026-01-03 and Sunday 2026-01-04 are styled");
 Check(!css.Contains("[data-id=\"2026/1/5\"]"), "Weekday is not styled");
 Check(css.Contains(".fc-day-sat:not(.fc-day-other) {") && css.Contains(".fc-day-sun:not(.fc-day-other) {"), "FullCalendar weekday classes");
+Check(css.Contains(":is(#CalendarBody, [id^=\"CalendarBody\"]) td.container") && css.Contains(":is(#FullCalendar, [id^=\"FullCalendar\"]).calendar-container"), "Selectors outweigh the built-in #CalendarBody td / #FullCalendar td rules (verified on a real Pleasanter)");
+Check(css.Contains("th.fc-col-header-cell[data-date=\"2026-01-01\"] .fc-col-header-cell-cushion") && css.Contains("[data-id=\"2026/2/11\"]:not(.other-month) .day { width: auto") , "Holiday header text color and widened .day for the label");
 Check(css.IndexOf("saturday", StringComparison.Ordinal) < 0 && css.IndexOf(theme.SaturdayBackground, StringComparison.Ordinal) < css.IndexOf(theme.HolidayBackground, StringComparison.Ordinal), "Holiday colors come after Saturday so they win");
 Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026), "CSS is deterministic");
 Check(CssGenerator.EscapeString("a\"b\\c</style>\n") == "a\\\"b\\\\c\\3c /style\\3e  ", "CSS string escape");
@@ -112,8 +117,8 @@ Check(!CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "")], theme, 2026, 2
 Reject(() => new CalendarTheme(HolidayBackground: "red; } body { display:none").Validate(), "Color injection is rejected");
 
 // Options
-var parsed = Options.Parse(["generate", "/csv", "/tmp/h.csv", "/output", "out", "/site-id", "1, 2,2"]);
-Check(parsed.Action == "generate" && parsed.CsvPaths.SequenceEqual(["/tmp/h.csv"]) && parsed.SiteIds.SequenceEqual([1, 2]), "Options parse");
+var parsed = Options.Parse(["register", "/csv", "/tmp/h.csv", "/url", "https://pl.example.com", "/site-id", "1, 2,2"]);
+Check(parsed.Action == "register" && parsed.CsvPaths.SequenceEqual(["/tmp/h.csv"]) && parsed.SiteIds.SequenceEqual([1, 2]), "Options parse");
 Check(Options.Parse([]).Action == "help", "Options help");
 Reject(() => Options.Parse(["generate", "/csv", "h.csv"]), "generate requires /output");
 Reject(() => Options.Parse(["register", "/csv", "h.csv"]), "register requires /url");
@@ -155,11 +160,10 @@ var temp = Path.Combine(Path.GetTempPath(), "csc-test-" + Guid.NewGuid().ToStrin
 try
 {
     await new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [], "/* css */"), CancellationToken.None);
-    var json = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.json")));
-    Check(json.RootElement.GetProperty("Style").GetString() == "/* css */" && !json.RootElement.TryGetProperty("SiteIdList", out _), "File sink writes Style and omits empty SiteIdList");
-    await new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [5], "x"), CancellationToken.None);
-    json = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.json")));
-    Check(json.RootElement.GetProperty("SiteIdList")[0].GetInt64() == 5, "File sink overwrites same name");
+    Check(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.css")) == "/* css */" && !File.Exists(Path.Combine(temp, "Holidays.json")), "File sink writes the CSS as a .css file (the only form Pleasanter reads)");
+    await new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [], "/* second */"), CancellationToken.None);
+    Check(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.css")) == "/* second */", "File sink overwrites the same name");
+    Reject(() => new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [5], "x"), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects a site limit");
     Reject(() => new FileStyleSink(temp).WriteAsync(new("../x", "d", [], "x"), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects path in name");
 }
 finally { if (Directory.Exists(temp)) Directory.Delete(temp, true); }

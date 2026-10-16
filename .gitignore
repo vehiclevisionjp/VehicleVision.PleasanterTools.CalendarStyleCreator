@@ -12,3 +12,6 @@ TestResults/
 .claude/memory/
 logs/
 node_modules/
+e2e-state.json*
+e2e-ids.json
+e2e-apikey.txt

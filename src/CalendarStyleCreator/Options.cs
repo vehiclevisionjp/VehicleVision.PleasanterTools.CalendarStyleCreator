@@ -57,6 +57,7 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
         if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
         if (action == "generate" && options.Output == null) throw new UserError("generate requires /output (or output in the config file).");
         if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url (or pleasanterUrl in the config file).");
+        if (action == "generate" && options.SiteIds.Count > 0) throw new UserError("generate (file placement) applies to all sites. Use register to limit the style to specific sites.");
         if (action == "register") ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);
         return options;
     }

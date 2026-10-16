@@ -1,0 +1,63 @@
+# 実機検証用の Pleasanter（公式イメージ）と PostgreSQL。手順は _development/E2E手順.md。
+# 資格情報・ポートは使い捨ての検証専用。実運用では使わない。
+name: calendarstyle-test
+
+x-pleasanter-env: &pleasanter-env
+  Implem.Pleasanter_Rds_Dbms: PostgreSQL
+  Implem.Pleasanter_Rds_SaConnectionString: "Server=db;Port=5432;Database=postgres;UID=postgres;PWD=CalendarStyle_test_only_123"
+  Implem.Pleasanter_Rds_OwnerConnectionString: "Server=db;Port=5432;Database=#ServiceName#;UID=#ServiceName#_Owner;PWD=CalendarStyle_test_only_123"
+  Implem.Pleasanter_Rds_UserConnectionString: "Server=db;Port=5432;Database=#ServiceName#;UID=#ServiceName#_User;PWD=CalendarStyle_test_only_123"
+  TZ: Asia/Tokyo
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: calendarstyle-test-db
+    environment:
+      POSTGRES_PASSWORD: CalendarStyle_test_only_123
+      TZ: Asia/Tokyo
+    ports: ['127.0.0.1:58802:5432']
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # スキーマ作成。完了して終了する。
+  codedefiner:
+    image: implem/pleasanter:codedefiner
+    container_name: calendarstyle-test-codedefiner
+    depends_on:
+      db: { condition: service_healthy }
+    environment: *pleasanter-env
+    command: ['_rds', '/y']
+    restart: 'no'
+
+  pleasanter:
+    # 参照ソース（_reference/Implem.Pleasanter、Pleasanter_1.5.8.1）に合わせる。
+    image: implem/pleasanter:1.5.8.1
+    container_name: calendarstyle-test-pleasanter
+    depends_on:
+      codedefiner: { condition: service_completed_successfully }
+    environment: *pleasanter-env
+    ports: ['127.0.0.1:58801:8080']
+    volumes:
+      # CalendarStyleCreator の出力先。ここへ置いたスタイルは本体の再起動で読み込まれる。
+      - ./temp/e2e/ExtendedStyles:/app/App_Data/Parameters/ExtendedStyles
+      # 週の開始曜日（FirstDayOfWeek）を切り替えるため、General.json を差し替える（_development/e2e/prepare.ps1 が作る）。
+      - ./temp/e2e/General.json:/app/App_Data/Parameters/General.json
+      # Extensions API の利用には特権ユーザー（PrivilegedUsers）が必要。Security.json を差し替える（prepare.ps1 が作る）。
+      - ./temp/e2e/Security.json:/app/App_Data/Parameters/Security.json
+    healthcheck:
+      # 本体イメージには curl / wget がないため bash の /dev/tcp で待受を確認する。
+      test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/localhost/8080']
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+volumes:
+  db-data:
+    name: calendarstyle-test-db-data

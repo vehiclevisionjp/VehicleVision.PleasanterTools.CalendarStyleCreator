@@ -23,15 +23,19 @@ public sealed record CalendarTheme(string HolidayBackground = "#fff0f3", string 
 /// 前月・翌月のはみ出し日は色を付けない（標準は .other-month、FullCalendar は .fc-day-other）。
 /// </summary>
 /// <remarks>
-/// 標準カレンダー（本体 HtmlCalendar.cs と Qiita 記事で確認）: 本体は <c>#CalendarBody</c> 配下の <c>td.container</c> が <c>data-id="yyyy/M/d"</c>（0 埋めなし）を持つ。
+/// 標準カレンダー（本体 HtmlCalendar.cs と実機で確認）: 本体は <c>#CalendarBody</c> 配下の <c>td.container</c> が <c>data-id="yyyy/M/d"</c>（0 埋めなし）を持つ。
 /// 月表示は内側に <c>.day</c>、週表示は <c>td.is-weekly</c>。年表示も同じ td.container で data-id が月初日になるため、<c>:has(&gt; div &gt; .day)</c> で月表示に限定する。
 /// セルに曜日クラスがなく、週の開始曜日も設定で変わるため、土日は日付ごとに指定する（対象は fromYear〜toYear の範囲）。
-/// FullCalendar: 曜日は <c>.fc-day-sat</c> / <c>.fc-day-sun</c>、日付は <c>data-date="yyyy-MM-dd"</c>（Qiita 記事で確認、実機未検証）。
+/// FullCalendar（実機 Pleasanter 1.5.8.1 で確認、_development/検証記録.md）: ルートは <c>div#FullCalendar.calendar-container.fc</c>。曜日は <c>.fc-day-sat</c> / <c>.fc-day-sun</c>、
+/// 前月・翌月は <c>.fc-day-other</c>、日付は <c>data-date="yyyy-MM-dd"</c>（月・週・日の日セルと見出し th、リストの <c>tr.fc-list-day</c>）。月表示の祝日名は <c>.fc-daygrid-day-top::after</c>。
+/// 本体の既定スタイルは <c>#CalendarBody td</c>・<c>#FullCalendar td</c> と ID セレクターで背景を指定するため、<c>:is(#ID, [id^=...])</c> で詳細度を合わせる。
 /// </remarks>
 public static class CssGenerator
 {
-    private const string Standard = "[id^=\"CalendarBody\"]";
-    private const string Full = "[id^=\"FullCalendar\"].calendar-container";
+    // 本体の既定スタイルは #CalendarBody td・#FullCalendar td（ID セレクター）で背景を指定する。
+    // :is(#ID, [id^=...]) は ID 1 つ分の詳細度になるため、!important なしで上書きできる。接尾辞付き ID（ダッシュボード用）にも前方一致するが、ダッシュボードでの表示は未検証。
+    private const string Standard = ":is(#CalendarBody, [id^=\"CalendarBody\"])";
+    private const string Full = ":is(#FullCalendar, [id^=\"FullCalendar\"]).calendar-container";
 
     public static string Generate(IEnumerable<Holiday> holidays, CalendarTheme theme, int fromYear, int toYear)
     {
@@ -67,7 +71,11 @@ public static class CssGenerator
         Day("sun", theme.HolidayBackground, theme.HolidayText, offDays);
         Rule(byDate.Keys.SelectMany(FullCalendarCell), $"background-color: {theme.HolidayBackground};");
         Rule(byDate.Keys.Select(d => $"{Full} td.fc-daygrid-day[data-date=\"{FullCalendarDate(d)}\"]:not(.fc-day-other) .fc-daygrid-day-number"), $"color: {theme.HolidayText};");
+        // 週・日表示の見出し（th）は本体の既定が白文字のため、祝日が平日でも文字色を変える（背景は上の th[data-date] ルール）。
+        Rule(byDate.Keys.Select(d => $"{Full} th.fc-col-header-cell[data-date=\"{FullCalendarDate(d)}\"] .fc-col-header-cell-cushion"), $"color: {theme.HolidayText};");
 
+        // 標準カレンダーの .day は 24px 幅の中央寄せなので、祝日名を足すと数字に重なる。名称のある祝日は幅を自動にして数字の右に並べる。
+        Rule(byDate.Where(h => h.Value.Length > 0).Select(h => MonthlyCell(h.Key) + " .day"), "width: auto; min-width: 24px; padding: 0 4px; justify-content: flex-start;");
         foreach (var (date, name) in byDate)
         {
             if (name.Length == 0) continue;

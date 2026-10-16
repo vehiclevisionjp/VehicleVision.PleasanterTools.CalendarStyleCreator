@@ -13,6 +13,7 @@
   "from": 2026,
   "to": 2027,
   "name": "CalendarHolidays",
+  // siteIds は register のみ（generate は全サイト）
   "siteIds": [],
   "output": "C:\\web\\pleasanter\\Implem.Pleasanter\\App_Data\\Parameters\\ExtendedStyles",
   "pleasanterUrl": "https://pleasanter.example.com",

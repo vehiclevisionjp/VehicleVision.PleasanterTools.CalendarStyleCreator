@@ -15,7 +15,7 @@ Copy-Item examples/holidays.csv (Join-Path $smokeHome 'holidays.csv')
 $csv = Join-Path $smokeHome 'holidays.csv'
 # 設定ファイル。相対パスは設定ファイルのあるフォルダ基準で解決される。
 $configPath = Join-Path $smokeHome 'calendarstyle.json'
-@{ calendars = @(); csv = @('holidays.csv'); from = 2026; to = 2026; name = 'SmokeHolidays'; siteIds = @(100); output = $styles } | ConvertTo-Json | Set-Content $configPath -Encoding utf8
+@{ calendars = @(); csv = @('holidays.csv'); from = 2026; to = 2026; name = 'SmokeHolidays'; output = $styles } | ConvertTo-Json | Set-Content $configPath -Encoding utf8
 $app = Join-Path $wwwroot 'CalendarStyleCreator/VehicleVision.PleasanterTools.CalendarStyleCreator.dll'
 $names = @('WEBSITE_SITE_NAME','WEBSITE_INSTANCE_ID','DOTNET_ENVIRONMENT','CALENDARSTYLE_PLEASANTER_API_KEY','CALENDARSTYLE_ICAL_BEARER_TOKEN','CALENDARSTYLE_ICAL_BASIC_USER')
 $previous = @{}
@@ -44,15 +44,15 @@ try {
         Invoke-Checked -Arguments @('help') -ExpectedText 'Usage: CalendarStyleCreator'
         # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへ書き出す。
         Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2026','/output',$styles,'/name','CalendarHolidays') -ExpectedText 'Done\. 4 holiday'
-        $generated = Join-Path $styles 'CalendarHolidays.json'
-        $style = Get-Content -LiteralPath $generated -Raw -Encoding utf8 | ConvertFrom-Json
-        if ($style.Name -ne 'CalendarHolidays' -or $style.Style -notmatch 'data-id="2026/1/1"' -or $style.Style -notmatch 'data-date="2026-01-01"') { throw 'Generated extended style is missing expected selectors.' }
-        if ($style.Style -notmatch '元日') { throw 'Japanese holiday names were not preserved in the generated file.' }
+        $generated = Join-Path $styles 'CalendarHolidays.css'
+        $css = Get-Content -LiteralPath $generated -Raw -Encoding utf8
+        if ($css -notmatch 'data-id="2026/1/1"' -or $css -notmatch 'data-date="2026-01-01"') { throw 'Generated extended style is missing expected selectors.' }
+        if ($css -notmatch '元日') { throw 'Japanese holiday names were not preserved in the generated file.' }
         $script:count++
         Invoke-Checked -Arguments @('generate','/config',$configPath) -ExpectedText 'Done\. 4 holiday'
-        $fromConfig = Get-Content -LiteralPath (Join-Path $styles 'SmokeHolidays.json') -Raw -Encoding utf8 | ConvertFrom-Json
-        if (@($fromConfig.SiteIdList).Count -ne 1 -or $fromConfig.SiteIdList[0] -ne 100) { throw 'Config file settings were not applied.' }
+        if (-not (Test-Path -LiteralPath (Join-Path $styles 'SmokeHolidays.css'))) { throw 'Config file settings were not applied.' }
         $script:count++
+        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/output',$styles,'/site-id','100') -ExpectedExit 2 -ExpectedText 'applies to all sites'
         Invoke-Checked -Arguments @('generate','-output',$styles,'/csv',$csv) -ExpectedExit 2 -ExpectedText 'Options start with /'
         Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none') -ExpectedExit 2 -ExpectedText 'generate requires /output'
         Invoke-Checked -Arguments @('generate','/ical-url','http://example.invalid/a.ics','/output',$styles) -ExpectedExit 2 -ExpectedText 'must be an absolute https URL'

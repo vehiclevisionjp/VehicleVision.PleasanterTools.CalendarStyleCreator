@@ -16,7 +16,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 
 | 方式 | コマンド | 内容 |
 | --- | --- | --- |
-| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/{名前}.json` を書き出す |
+| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/{名前}.css` を書き出す（全サイトに適用） |
 | API 登録 | `register` | Extensions API で拡張スタイルを登録・更新する（同名は更新） |
 
 ## 使う
@@ -34,7 +34,7 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output "
 | `/csv <file>` | CSV からも読む。同じ日付は CSV が優先 |
 | `/from 2026 /to 2027` | 出力する年の範囲（既定: 今年と来年）。範囲外の休日と土日は出力しない |
 | `/holiday-bg` `/saturday-bg` `/holiday-text` `/saturday-text` | 色（`#rrggbb` または色名） |
-| `/site-id 1,2` | 適用サイトを限定（省略時は全サイト） |
+| `/site-id 1,2` | 適用サイトを限定（`register` のみ。省略時は全サイト） |
 | `/name` | 拡張スタイル名（既定: `CalendarHolidays`） |
 
 ### 認証付きの iCal
@@ -56,6 +56,8 @@ https のみ使えます。認証付きの場合はリダイレクトを追従�
 CSV は [内閣府の「国民の祝日」CSV](https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv) をそのまま読めます（Shift_JIS・UTF-8 どちらも可）。自作する場合は `日付,名前` の 1 行 1 休日です（例: [examples/holidays.csv](examples/holidays.csv)）。
 
 標準カレンダーの土日は日付ごとに指定するため、出力範囲の年を過ぎると色が付かなくなります。年を跨ぐ前に再生成してください。
+
+ファイル配置・API 登録のどちらも、反映には Pleasanter の再起動が必要です（拡張スタイルは起動時に読み込まれます）。サイトを限定したい場合は API 登録を使います（ファイルの `.css` は全サイトに適用されます）。
 
 ## API 登録
 
