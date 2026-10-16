@@ -1,0 +1,7 @@
+VehicleVision.PleasanterTools.CalendarStyleCreator
+Copyright (C) 2026 PMC Co.,Ltd.
+SPDX-License-Identifier: AGPL-3.0-or-later
+Source: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator
+
+Direct dependencies: none (.NET base class library only).
+Pleasanter reference submodule: AGPL v3, not included in distribution.

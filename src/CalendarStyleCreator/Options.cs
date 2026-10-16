@@ -1,0 +1,45 @@
+using System.Globalization;
+
+namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
+
+public sealed record Options(string Action, string? CsvPath, string? CalendarId, int? FromYear, int? ToYear, string Name, IReadOnlyList<long> SiteIds, string? Output, string? PleasanterUrl)
+{
+    public const string DefaultName = "CalendarHolidays";
+    // 資格情報はコマンドラインへ置かず環境変数から読む（履歴・プロセス一覧への露出を避ける）。
+    public const string GoogleApiKeyVariable = "CALENDARSTYLE_GOOGLE_API_KEY";
+    public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
+
+    private static readonly string[] ValueOptions = ["csv", "calendar-id", "from", "to", "name", "site-id", "output", "url"];
+
+    public static Options Parse(string[] args)
+    {
+        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", null, null, null, null, DefaultName, [], null, null);
+        var action = args[0];
+        if (action is not ("generate" or "register")) throw new UserError("Unknown action. Use generate or register.");
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var i = 1; i < args.Length; i++)
+        {
+            if (args[i].Length < 2 || args[i][0] != '/') throw new UserError("Options start with /. Use help for usage.");
+            var name = args[i][1..];
+            if (!ValueOptions.Contains(name)) throw new UserError("Unknown option. Use help for usage.");
+            // 値は次の引数。パス（csv / output）は / で始まる値（Linux の絶対パス）も許す。
+            if (++i >= args.Length || (name is not ("csv" or "output") && args[i].StartsWith('/')) || !values.TryAdd(name, args[i])) throw new UserError("Missing or duplicate option value.");
+        }
+        string? V(string key) => values.GetValueOrDefault(key);
+        int? Year(string key)
+        {
+            if (V(key) == null) return null;
+            if (!int.TryParse(V(key), NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1900 or > 2100) throw new UserError("Year option out of range.");
+            return year;
+        }
+        var sites = (V("site-id") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => long.TryParse(s, NumberStyles.None, CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new UserError("Site ID must be a positive number."))
+            .Distinct().ToList();
+        var options = new Options(action, V("csv"), V("calendar-id"), Year("from"), Year("to"), V("name") ?? DefaultName, sites, V("output"), V("url"));
+        if (options.CsvPath == null && options.CalendarId == null) throw new UserError("Specify /csv or /calendar-id.");
+        if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
+        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output.");
+        if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url.");
+        return options;
+    }
+}
