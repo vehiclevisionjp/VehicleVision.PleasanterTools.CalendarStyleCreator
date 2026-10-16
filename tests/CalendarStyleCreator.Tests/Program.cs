@@ -63,6 +63,23 @@ using (var fakeClient = new HttpClient(fake))
 Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/site-id", "5"]), "generate rejects /site-id (file placement is all sites)");
 Check(Options.Parse(["register", "/csv", "h.csv", "/url", "https://pl.example.com", "/site-id", "5"]).SiteIds.SequenceEqual([5]), "register accepts /site-id");
 
+// /p（本体フォルダ）と既定の兄弟フォルダ
+var pRoot = Path.Combine(Path.GetTempPath(), "csc-p-" + Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(Path.Combine(pRoot, "web", "Implem.Pleasanter", "App_Data"));
+Directory.CreateDirectory(Path.Combine(pRoot, "web", "CalendarStyleCreator"));
+try
+{
+    var expected = Path.Combine(pRoot, "web", "Implem.Pleasanter", "App_Data", "Parameters", "ExtendedStyles");
+    Check(Options.FindExtendedStylesFolder(Path.Combine(pRoot, "web", "Implem.Pleasanter")) == expected, "/p accepts the Implem.Pleasanter folder");
+    Check(Options.FindExtendedStylesFolder(Path.Combine(pRoot, "web")) == expected, "/p accepts the parent of Implem.Pleasanter");
+    Check(Options.FindExtendedStylesFolder(null, Path.Combine(pRoot, "web", "CalendarStyleCreator")) == expected, "Default finds Implem.Pleasanter beside the tool");
+    Check(Options.FindExtendedStylesFolder(null, Path.Combine(pRoot, "other")) == null, "No default when Implem.Pleasanter is not beside the tool");
+    Reject(() => Options.FindExtendedStylesFolder(Path.Combine(pRoot, "nothing")), "/p without App_Data is rejected");
+    Check(Options.Parse(["generate", "/csv", "h.csv", "/p", Path.Combine(pRoot, "web")]).Output == expected, "generate derives the output from /p");
+    Check(Options.Parse(["generate", "/csv", "h.csv", "/p", Path.Combine(pRoot, "web"), "/output", "o"]).Output == "o", "/output overrides /p");
+}
+finally { Directory.Delete(pRoot, true); }
+
 // Config file
 var configDir = Path.Combine(Path.GetTempPath(), "csc-cfg-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(configDir);

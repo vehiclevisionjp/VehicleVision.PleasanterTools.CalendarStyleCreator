@@ -8,7 +8,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 
 - 日曜・祝日の背景色と日付の文字色（同じ色）
 - 土曜日の背景色と日付の文字色
-- 祝日名（標準カレンダーの月表示、FullCalendar の月・日・週・リスト表示）
+- 祝日名（標準カレンダーの月・週表示、FullCalendar の月・週・日・リスト表示）
 
 ## 配置方式
 
@@ -24,7 +24,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 既定では、Google カレンダーの日本の祝日（`ja.japanese.official#holiday@group.v.calendar.google.com`）を使います。公開カレンダーなので API キーは不要です。
 
 ```powershell
-dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output "C:\web\pleasanter\Implem.Pleasanter\App_Data\Parameters\ExtendedStyles"
+dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /p "C:\web\pleasanter\Implem.Pleasanter"
 ```
 
 | オプション | 内容 |
@@ -34,6 +34,8 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output "
 | `/csv <file>` | CSV からも読む。同じ日付は CSV が優先 |
 | `/from 2026 /to 2027` | 出力する年の範囲（既定: 今年と来年）。範囲外の休日と土日は出力しない |
 | `/holiday-bg` `/saturday-bg` `/holiday-text` `/saturday-text` | 色（`#rrggbb` または色名） |
+| `/p <フォルダ>` | `generate` の出力先を、本体フォルダ（`App_Data` のある `Implem.Pleasanter` またはその親）から決める。CodeDefiner と同じ指定。省略時は、このツールの兄弟フォルダ `Implem.Pleasanter` を使う |
+| `/output <フォルダ>` | `generate` の出力先を直接指定（`/p` より優先） |
 | `/site-id 1,2` | 適用サイトを限定（`register` のみ。省略時は全サイト） |
 | `/name` | 拡張スタイル名（既定: `CalendarHolidays`） |
 

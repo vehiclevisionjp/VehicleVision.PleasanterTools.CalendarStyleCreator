@@ -18,7 +18,7 @@ public static class Program
                 RuntimeLog.WriteLine($"""
                     CalendarStyleCreator {typeof(Program).Assembly.GetName().Version!.ToString(3)} - Pleasanter calendar holiday style generator
                     Usage: CalendarStyleCreator <action> [/config <file>] [options]
-                      generate                    Write ExtendedStyles/<name>.css (all sites); requires /output
+                      generate                    Write ExtendedStyles/<name>.css (all sites) to /output, or under /p, or beside this tool
                       register                    Register the extended style through the Extensions API; requires /url
                     /config <file.json>         Settings file (see README). Command-line options override it.
                     Options (same style as Implem.CodeDefiner: start with /, a value follows):
@@ -31,7 +31,9 @@ public static class Program
                       /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
                       /name <name>                Extended style name (default: {Options.DefaultName})
                       /site-id <id,...>           register: apply to these sites only (default: all sites)
-                      /output <folder>            generate: ExtendedStyles folder
+                      /p <folder>                 generate: Pleasanter folder (Implem.Pleasanter); same as Implem.CodeDefiner
+                                                  Default: Implem.Pleasanter beside this tool
+                      /output <folder>            generate: ExtendedStyles folder (overrides /p)
                       /url <base url>             register: Pleasanter base URL (API key: env {Options.PleasanterApiKeyVariable})
                     """);
                 return 0;

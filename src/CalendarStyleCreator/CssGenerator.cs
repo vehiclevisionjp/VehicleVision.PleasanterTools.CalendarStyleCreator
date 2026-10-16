@@ -82,6 +82,8 @@ public static class CssGenerator
             var label = $"content: \"{EscapeString(name)}\"; margin-left: 0.5em; font-size: 0.85em; font-weight: 600; white-space: nowrap;";
             var attribute = $"[data-date=\"{FullCalendarDate(date)}\"]";
             Rule([MonthlyCell(date) + " .day::after"], label);
+            // 標準カレンダーの週表示のセルには日付の数字（.day）がないため、セルの先頭に祝日名を出す。
+            Rule([WeeklyCell(date) + "::before"], label + $" display: block; margin: 0 0 0.25em 0; color: {theme.HolidayText};");
             Rule([$"{Full} td.fc-daygrid-day{attribute}:not(.fc-day-other) .fc-daygrid-day-top::after", $"{Full} th.fc-col-header-cell{attribute} .fc-col-header-cell-cushion::after", $"{Full} .fc-list-day{attribute} .fc-list-day-text::after"], label);
         }
         return css.ToString();
@@ -91,13 +93,16 @@ public static class CssGenerator
 
     private static string DataId(DateOnly date) => $"[data-id=\"{date.Year}/{date.Month}/{date.Day}\"]";
 
+    private static string WeeklyCell(DateOnly date) => $"{Standard} td.container.is-weekly{DataId(date)}";
+
     private static string MonthlyCell(DateOnly date) => $"{Standard} td.container:has(> div > .day){DataId(date)}:not(.other-month)";
 
     /// <summary>標準カレンダーの月表示・週表示のセル。年表示のセルは含めない。</summary>
     private static IEnumerable<string> StandardCell(DateOnly date)
     {
         yield return MonthlyCell(date);
-        yield return $"{Standard} td.container.is-weekly{DataId(date)}:not(.other-month)";
+        // 週表示では、表示中の 7 日すべてが見える日なので、月をまたぐ日（.other-month）にも色を付ける。
+        yield return WeeklyCell(date);
     }
 
     /// <summary>FullCalendar の日セルと、日・週表示の見出し。</summary>

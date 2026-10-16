@@ -47,6 +47,7 @@ if (mode === 'standard') {
       id: td.dataset.id, cls: td.className, weekly: td.classList.contains('is-weekly'), hasDay: !!day,
       bg: getComputedStyle(td).backgroundColor, color: day ? getComputedStyle(day).color : null,
       after: day ? getComputedStyle(day, '::after').content : null,
+      before: getComputedStyle(td, '::before').content,
       dayWidth: day ? Math.round(day.getBoundingClientRect().width) : 0, text: day?.innerText
     };
   }));
@@ -60,10 +61,13 @@ if (mode === 'standard') {
         check(`year ${c.id} no holiday label`, none(c.after), c);
         continue;
       }
-      const exp = other ? null : expectFor(date);
+      // 週表示は月をまたぐ日（.other-month）にも色を付ける。月表示ははみ出し日に付けない。
+      const exp = other && view !== 'weekly' ? null : expectFor(date);
       if (exp && view === 'weekly') {
-        // 週表示のセルには日付の数字（.day）も祝日名もなく、背景色だけが対象。
+        // 週表示のセルには日付の数字（.day）がなく、背景色と、セル先頭の祝日名（::before）が対象。
         check(`${view} ${c.id} bg`, c.bg === exp.bg, { got: c.bg, want: exp.bg });
+        if (exp.name) check(`${view} ${c.id} name`, c.before === `"${exp.name}"`, { got: c.before, want: exp.name });
+        else check(`${view} ${c.id} no name`, none(c.before), { got: c.before });
       } else if (exp) {
         check(`${view} ${c.id} bg`, c.bg === exp.bg, { got: c.bg, want: exp.bg });
         check(`${view} ${c.id} day color`, c.color === exp.text, { got: c.color, want: exp.text });

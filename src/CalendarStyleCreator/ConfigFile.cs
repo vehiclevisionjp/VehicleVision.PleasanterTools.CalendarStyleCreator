@@ -22,10 +22,11 @@ public sealed class ConfigFile
     public string? Name { get; private set; }
     public IReadOnlyList<long>? SiteIds { get; private set; }
     public string? Output { get; private set; }
+    public string? PleasanterPath { get; private set; }
     public string? PleasanterUrl { get; private set; }
     public CalendarTheme? Theme { get; private set; }
 
-    private static readonly string[] Keys = ["calendars", "icalUrls", "csv", "from", "to", "name", "siteIds", "output", "pleasanterUrl", "colors"];
+    private static readonly string[] Keys = ["calendars", "icalUrls", "csv", "from", "to", "name", "siteIds", "output", "pleasanterPath", "pleasanterUrl", "colors"];
     private static readonly string[] ColorKeys = ["holidayBackground", "saturdayBackground", "holidayText", "saturdayText"];
     private static readonly string[] IcalKeys = ["url", "bearerTokenEnv", "basicUserEnv", "basicPasswordEnv"];
 
@@ -57,6 +58,7 @@ public sealed class ConfigFile
                 case "name": config.Name = Str(value, "name"); break;
                 case "siteIds": config.SiteIds = value.ValueKind == JsonValueKind.Array ? value.EnumerateArray().Select(e => e.ValueKind == JsonValueKind.Number && e.TryGetInt64(out var id) && id > 0 ? id : throw new UserError("siteIds must be positive numbers.")).Distinct().ToList() : throw new UserError("siteIds must be an array."); break;
                 case "output": config.Output = Resolve(Str(value, "output")); break;
+                case "pleasanterPath": config.PleasanterPath = Resolve(Str(value, "pleasanterPath")); break;
                 case "pleasanterUrl": config.PleasanterUrl = Str(value, "pleasanterUrl"); break;
                 case "colors": config.Theme = ReadTheme(value); break;
             }

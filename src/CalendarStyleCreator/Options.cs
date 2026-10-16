@@ -12,8 +12,8 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
     public const string IcalBasicPasswordVariable = "CALENDARSTYLE_ICAL_BASIC_PASSWORD";
     public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
 
-    private static readonly string[] ValueOptions = ["config", "csv", "calendar-id", "ical-url", "from", "to", "name", "site-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
-    private static readonly string[] PathOptions = ["config", "csv", "output"];
+    private static readonly string[] ValueOptions = ["config", "p", "csv", "calendar-id", "ical-url", "from", "to", "name", "site-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
+    private static readonly string[] PathOptions = ["config", "p", "csv", "output"];
 
     /// <summary>優先順位は コマンドライン &gt; 設定ファイル（/config）&gt; 既定値。</summary>
     public static Options Parse(string[] args)
@@ -52,13 +52,26 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
 
         var defaults = config.Theme ?? new CalendarTheme();
         var theme = new CalendarTheme(V("holiday-bg") ?? defaults.HolidayBackground, V("saturday-bg") ?? defaults.SaturdayBackground, V("holiday-text") ?? defaults.HolidayText, V("saturday-text") ?? defaults.SaturdayText).Validate();
-        var options = new Options(action, csv, calendars, icalUrls, Year("from", config.From), Year("to", config.To), V("name") ?? config.Name ?? DefaultName, sites, V("output") ?? config.Output, V("url") ?? config.PleasanterUrl, theme);
+        var output = V("output") ?? config.Output ?? (action == "generate" ? FindExtendedStylesFolder(V("p") ?? config.PleasanterPath) : null);
+        var options = new Options(action, csv, calendars, icalUrls, Year("from", config.From), Year("to", config.To), V("name") ?? config.Name ?? DefaultName, sites, output, V("url") ?? config.PleasanterUrl, theme);
         if (options.CsvPaths.Count == 0 && options.CalendarIds.Count == 0 && options.IcalUrls.Count == 0) throw new UserError("Specify /calendar-id, /ical-url, /csv or /config.");
         if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
-        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output (or output in the config file).");
+        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output, /p, or an Implem.Pleasanter folder beside this tool.");
         if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url (or pleasanterUrl in the config file).");
         if (action == "generate" && options.SiteIds.Count > 0) throw new UserError("generate (file placement) applies to all sites. Use register to limit the style to specific sites.");
         if (action == "register") ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);
         return options;
+    }
+
+    /// <summary>
+    /// 出力先の既定。/p は CodeDefiner と同じく本体フォルダ（App_Data を持つ Implem.Pleasanter、またはその親）。
+    /// 省略時は、このツールの兄弟フォルダ Implem.Pleasanter を探す（配布 ZIP の既定の配置）。見つからなければ null。
+    /// </summary>
+    public static string? FindExtendedStylesFolder(string? pleasanterPath, string? toolFolder = null)
+    {
+        static string? Styles(string folder) => Directory.Exists(Path.Combine(folder, "App_Data")) ? Path.Combine(folder, "App_Data", "Parameters", "ExtendedStyles") : null;
+        if (pleasanterPath != null)
+            return Styles(pleasanterPath) ?? Styles(Path.Combine(pleasanterPath, "Implem.Pleasanter")) ?? throw new UserError("/p must be the Pleasanter folder that contains App_Data.");
+        return Styles(Path.GetFullPath(Path.Combine(toolFolder ?? AppContext.BaseDirectory, "..", "Implem.Pleasanter")));
     }
 }

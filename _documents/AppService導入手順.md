@@ -24,6 +24,8 @@ wwwroot/
 dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.CalendarStyleCreator.dll" generate /output "%HOME%\site\wwwroot\Implem.Pleasanter\App_Data\Parameters\ExtendedStyles"
 ```
 
+`Implem.Pleasanter` が `CalendarStyleCreator` の隣にある配置では、`/output` も省略できます（本体フォルダは `/p` でも指定できます。CodeDefiner と同じ指定です）。
+
 Linux の例です。
 
 ```bash
