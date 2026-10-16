@@ -12,7 +12,12 @@
   "csv": ["holidays.csv"],
   "from": 2026,
   "to": 2027,
-  "name": "CalendarHolidays",
+  // 拡張スタイルの名前の接頭辞。<prefix>core と <prefix><年> を作り、この接頭辞で始まるものだけを管理対象にする
+  "prefix": "vvcsc_",
+  // true にすると、接頭辞で始まり今回は生成しなくなったスタイル（過ぎた年など）を削除する
+  "prune": false,
+  // register のみ。省略すると API キーの持ち主のテナント
+  // "tenantId": 1,
   // siteIds は register のみ（generate は全サイト）
   "siteIds": [],
   "output": "C:\\web\\pleasanter\\Implem.Pleasanter\\App_Data\\Parameters\\ExtendedStyles",

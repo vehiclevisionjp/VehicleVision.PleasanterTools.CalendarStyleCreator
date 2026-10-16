@@ -15,7 +15,7 @@ Copy-Item examples/holidays.csv (Join-Path $smokeHome 'holidays.csv')
 $csv = Join-Path $smokeHome 'holidays.csv'
 # 設定ファイル。相対パスは設定ファイルのあるフォルダ基準で解決される。
 $configPath = Join-Path $smokeHome 'calendarstyle.json'
-@{ calendars = @(); csv = @('holidays.csv'); from = 2026; to = 2026; name = 'SmokeHolidays'; output = $styles } | ConvertTo-Json | Set-Content $configPath -Encoding utf8
+@{ calendars = @(); csv = @('holidays.csv'); from = 2026; to = 2026; prefix = 'Smoke_'; prune = $true; output = $styles } | ConvertTo-Json | Set-Content $configPath -Encoding utf8
 $app = Join-Path $wwwroot 'CalendarStyleCreator/VehicleVision.PleasanterTools.CalendarStyleCreator.dll'
 $names = @('WEBSITE_SITE_NAME','WEBSITE_INSTANCE_ID','DOTNET_ENVIRONMENT','CALENDARSTYLE_PLEASANTER_API_KEY','CALENDARSTYLE_ICAL_BEARER_TOKEN','CALENDARSTYLE_ICAL_BASIC_USER')
 $previous = @{}
@@ -43,23 +43,37 @@ try {
     try {
         Invoke-Checked -Arguments @('help') -ExpectedText 'Usage: CalendarStyleCreator'
         # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへ書き出す。
-        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2026','/output',$styles,'/name','CalendarHolidays') -ExpectedText 'Done\. 4 holiday'
-        $generated = Join-Path $styles 'CalendarHolidays.css'
-        $css = Get-Content -LiteralPath $generated -Raw -Encoding utf8
+        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'Done\. 4 holiday'
+        $core = Join-Path $styles 'vvcsc_core.css'
+        $year = Join-Path $styles 'vvcsc_2026.css'
+        if (-not (Test-Path -LiteralPath $core) -or -not (Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2027.css'))) { throw 'Core and per-year styles were not generated.' }
+        $css = Get-Content -LiteralPath $year -Raw -Encoding utf8
         if ($css -notmatch 'data-id="2026/1/1"' -or $css -notmatch 'data-date="2026-01-01"') { throw 'Generated extended style is missing expected selectors.' }
         if ($css -notmatch '元日') { throw 'Japanese holiday names were not preserved in the generated file.' }
         $script:count++
+        # 管理対象（接頭辞）の古いファイルは /prune のときだけ消え、それ以外のファイルには触れない。
+        Set-Content -LiteralPath (Join-Path $styles 'vvcsc_2025.css') -Value '/* old */'
+        Set-Content -LiteralPath (Join-Path $styles 'mine.css') -Value '/* mine */'
+        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'WARNING: Obsolete style'
+        if (-not (Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2025.css'))) { throw 'Obsolete file was deleted without /prune.' }
+        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles,'/prune') -ExpectedText 'Deleted obsolete style'
+        if ((Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2025.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'mine.css'))) { throw '/prune did not limit itself to managed files.' }
+        $script:count++
         Invoke-Checked -Arguments @('generate','/config',$configPath) -ExpectedText 'Done\. 4 holiday'
-        if (-not (Test-Path -LiteralPath (Join-Path $styles 'SmokeHolidays.css'))) { throw 'Config file settings were not applied.' }
+        if (-not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_core.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_2026.css'))) { throw 'Config file settings were not applied.' }
         $script:count++
         Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/output',$styles,'/site-id','100') -ExpectedExit 2 -ExpectedText 'applies to all sites'
         Invoke-Checked -Arguments @('generate','-output',$styles,'/csv',$csv) -ExpectedExit 2 -ExpectedText 'Options start with /'
-        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none') -ExpectedExit 2 -ExpectedText 'generate requires /output'
+        # /output も /p も省略: 隣の Implem.Pleasanter を既定の出力先にする（配布 ZIP の標準の配置）。
+        Remove-Item -LiteralPath (Join-Path $styles 'vvcsc_2026.css')
+        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/from','2026','/to','2026') -ExpectedText 'Done\. 4 holiday'
+        if (-not (Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2026.css'))) { throw 'The default output folder beside the tool was not used.' }
+        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/p',$pleasanter,'/from','2026','/to','2026') -ExpectedText 'Done\. 4 holiday'
         Invoke-Checked -Arguments @('generate','/ical-url','http://example.invalid/a.ics','/output',$styles) -ExpectedExit 2 -ExpectedText 'must be an absolute https URL'
         # API 登録: 到達できない URL でも資格情報を出力せず、英語のエラーで終了する。
         $env:CALENDARSTYLE_PLEASANTER_API_KEY = 'PRIVATE_TEST_MARKER_DO_NOT_LOG'
-        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://127.0.0.1:1') -ExpectedExit 2 -ExpectedText 'Could not connect to Pleasanter'
-        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://pleasanter.example.invalid') -ExpectedExit 2 -ExpectedText 'must be https'
+        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://127.0.0.1:1') -ExpectedExit 2 -ExpectedText 'WARNING: The API key is sent over http'
+        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','ftp://pleasanter.example.invalid') -ExpectedExit 2 -ExpectedText 'http or https'
     } finally { Pop-Location }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $previous[$name]) }

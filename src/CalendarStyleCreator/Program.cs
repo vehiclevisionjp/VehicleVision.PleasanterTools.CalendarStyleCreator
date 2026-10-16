@@ -29,7 +29,9 @@ public static class Program
                       /csv <file>                 Extra holidays from a CSV file ("date,name" per line); overrides Google on the same date
                       /from <year> /to <year>     Output year range for holidays and weekends (default: this year and next)
                       /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
-                      /name <name>                Extended style name (default: {Options.DefaultName})
+                      /prefix <text>              Name prefix of the generated styles (default: {Options.DefaultPrefix}). Styles: <prefix>core and <prefix><year>
+                      /prune                      Delete managed styles (names starting with the prefix) that are no longer generated
+                      /tenant-id <id>             register: tenant of the extensions (default: the tenant of the API key's user)
                       /site-id <id,...>           register: apply to these sites only (default: all sites)
                       /p <folder>                 generate: Pleasanter folder (Implem.Pleasanter); same as Implem.CodeDefiner
                                                   Default: Implem.Pleasanter beside this tool
@@ -43,11 +45,11 @@ public static class Program
             var fromYear = options.FromYear ?? thisYear;
             var toYear = options.ToYear ?? thisYear + 1;
             var holidays = (await LoadHolidays(options, fromYear, toYear, cancel.Token)).Where(h => h.Date.Year >= fromYear && h.Date.Year <= toYear).ToList();
-            var style = new StyleDefinition(options.Name, "Holiday highlight for the calendar view (generated)", options.SiteIds, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear));
+            var set = StyleSet.Create(options.Prefix, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear), options.SiteIds, options.Prune);
             IStyleSink sink = options.Action == "generate"
                 ? new FileStyleSink(options.Output!)
-                : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."));
-            await sink.WriteAsync(style, cancel.Token);
+                : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."), options.TenantId);
+            await sink.WriteAsync(set, cancel.Token);
             RuntimeLog.WriteLine($"Done. {holidays.Select(h => h.Date).Distinct().Count()} holiday(s).");
             return 0;
         }

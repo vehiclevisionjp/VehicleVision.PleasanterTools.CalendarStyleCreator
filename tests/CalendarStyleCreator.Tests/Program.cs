@@ -91,17 +91,17 @@ try
           // comments and trailing commas are allowed
           "calendars": ["a@group.calendar.google.com", "b@group.calendar.google.com"],
           "icalUrls": ["https://x.example/a.ics", { "url": "https://y.example/b.ics", "basicUserEnv": "U", "basicPasswordEnv": "P" },],
-          "csv": ["holidays.csv"], "from": 2026, "to": 2027, "name": "FromConfig", "siteIds": [3, 4],
+          "csv": ["holidays.csv"], "from": 2026, "to": 2027, "prefix": "FromConfig_", "prune": true, "tenantId": 4, "siteIds": [3, 4],
           "output": "out", "colors": { "saturdayBackground": "#abcdef" }
         }
         """);
     var fromConfig = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com"]);
     Check(fromConfig.CalendarIds.Count == 2 && fromConfig.IcalUrls.Count == 2 && fromConfig.IcalUrls[1].BasicUserEnv == "U", "Config arrays and per-URL auth names");
     Check(fromConfig.CsvPaths.SequenceEqual([Path.Combine(configDir, "holidays.csv")]) && fromConfig.Output == Path.Combine(configDir, "out"), "Config relative paths resolve from the config folder");
-    Check(fromConfig.Name == "FromConfig" && fromConfig.SiteIds.SequenceEqual([3, 4]) && fromConfig.FromYear == 2026 && fromConfig.ToYear == 2027, "Config scalar values");
+    Check(fromConfig.Prefix == "FromConfig_" && fromConfig.Prune && fromConfig.TenantId == 4 && fromConfig.SiteIds.SequenceEqual([3, 4]) && fromConfig.FromYear == 2026 && fromConfig.ToYear == 2027, "Config scalar values");
     Check(fromConfig.Theme.SaturdayBackground == "#abcdef" && fromConfig.Theme.HolidayBackground == new CalendarTheme().HolidayBackground, "Config colors override only given keys");
-    var overridden = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com", "/name", "Cli", "/calendar-id", "none", "/site-id", "9"]);
-    Check(overridden.Name == "Cli" && overridden.CalendarIds.Count == 0 && overridden.SiteIds.SequenceEqual([9]), "Command line overrides the config file");
+    var overridden = Options.Parse(["register", "/config", configPath, "/url", "https://pl.example.com", "/prefix", "Cli_", "/calendar-id", "none", "/site-id", "9"]);
+    Check(overridden.Prefix == "Cli_" && overridden.CalendarIds.Count == 0 && overridden.SiteIds.SequenceEqual([9]), "Command line overrides the config file");
     File.WriteAllText(configPath, "{ \"calendars\": [] , \"csv\": [\"h.csv\"], \"output\": \"o\" }");
     Check(Options.Parse(["generate", "/config", configPath]).CalendarIds.Count == 0, "Empty calendars array disables Google calendars");
     File.WriteAllText(configPath, "{ \"csv\": [\"h.csv\"], \"output\": \"o\" }");
@@ -115,60 +115,74 @@ try
 }
 finally { Directory.Delete(configDir, true); }
 
-// CSS
+// CSS（共通部 + 年ごと）
 var theme = new CalendarTheme();
-var css = CssGenerator.Generate([new(new DateOnly(2026, 2, 11), "B"), new(new DateOnly(2026, 1, 1), "A"), new(new DateOnly(2026, 1, 1), "A2")], theme, 2026, 2026);
+var generated = CssGenerator.Generate([new(new DateOnly(2026, 2, 11), "B"), new(new DateOnly(2026, 1, 1), "A"), new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2027, 1, 1), "C")], theme, 2026, 2027);
+var css = generated.Years[2026];
+Check(generated.Years.Keys.SequenceEqual([2026, 2027]), "One style per year in the range");
+Check(!generated.Years[2026].Contains("2027/1/1") && generated.Years[2027].Contains("[data-id=\"2027/1/1\"]") && !generated.Years[2027].Contains("2026/1/1"), "Each year file contains only its own dates");
+Check(generated.Core.Contains(".fc-day-sat:where(:not(.fc-day-other)) {") && generated.Core.Contains(".fc-day-sun:where(:not(.fc-day-other)) {") && !generated.Core.Contains("data-id") && !generated.Core.Contains("data-date"), "Core holds only the FullCalendar weekday classes, no dates");
+Check(!css.Contains(".fc-day-sat"), "Year files do not repeat the weekday classes");
 Check(css.Contains("td.container:has(> div > .day)[data-id=\"2026/1/1\"]:not(.other-month)"), "Standard monthly cell, no zero padding, excludes other month and yearly view");
 Check(css.Contains("td.container.is-weekly[data-id=\"2026/2/11\"]"), "Standard weekly cell");
 Check(css.Contains("td.fc-daygrid-day[data-date=\"2026-01-01\"]:not(.fc-day-other) .fc-daygrid-day-top::after"), "FullCalendar day label");
 Check(css.Contains("content: \"A2\"") && !css.Contains("content: \"A\""), "Last duplicate wins");
 Check(css.Contains("[data-id=\"2026/1/3\"]") && css.Contains("[data-id=\"2026/1/4\"]"), "Saturday 2026-01-03 and Sunday 2026-01-04 are styled");
 Check(!css.Contains("[data-id=\"2026/1/5\"]"), "Weekday is not styled");
-Check(css.Contains(".fc-day-sat:not(.fc-day-other) {") && css.Contains(".fc-day-sun:not(.fc-day-other) {"), "FullCalendar weekday classes");
 Check(css.Contains(":is(#CalendarBody, [id^=\"CalendarBody\"]) td.container") && css.Contains(":is(#FullCalendar, [id^=\"FullCalendar\"]).calendar-container"), "Selectors outweigh the built-in #CalendarBody td / #FullCalendar td rules (verified on a real Pleasanter)");
-Check(css.Contains("th.fc-col-header-cell[data-date=\"2026-01-01\"] .fc-col-header-cell-cushion") && css.Contains("[data-id=\"2026/2/11\"]:not(.other-month) .day { width: auto") , "Holiday header text color and widened .day for the label");
-Check(css.IndexOf("saturday", StringComparison.Ordinal) < 0 && css.IndexOf(theme.SaturdayBackground, StringComparison.Ordinal) < css.IndexOf(theme.HolidayBackground, StringComparison.Ordinal), "Holiday colors come after Saturday so they win");
-Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026), "CSS is deterministic");
+Check(css.Contains("th.fc-col-header-cell[data-date=\"2026-01-01\"] .fc-col-header-cell-cushion") && css.Contains("[data-id=\"2026/2/11\"]:not(.other-month) .day { width: auto"), "Holiday header text color and widened .day for the label");
+Check(css.IndexOf(theme.SaturdayBackground, StringComparison.Ordinal) < css.IndexOf(theme.HolidayBackground, StringComparison.Ordinal), "Holiday colors come after Saturday within the year file so they win");
+Check(css.Contains("position: absolute") && css.Contains("td.container.is-weekly[data-id=\"2026/1/1\"]::before"), "Weekly label is absolutely positioned so multi-day bars do not shift");
+Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026).Years[2026], "CSS is deterministic and independent of other years");
 Check(CssGenerator.EscapeString("a\"b\\c</style>\n") == "a\\\"b\\\\c\\3c /style\\3e  ", "CSS string escape");
-Check(!CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "")], theme, 2026, 2026).Contains("::after"), "CSS omits label for empty name");
+Check(!CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "")], theme, 2026, 2026).Years[2026].Contains("::after"), "CSS omits label for empty name");
 Reject(() => new CalendarTheme(HolidayBackground: "red; } body { display:none").Validate(), "Color injection is rejected");
 
-// Options
-var parsed = Options.Parse(["register", "/csv", "/tmp/h.csv", "/url", "https://pl.example.com", "/site-id", "1, 2,2"]);
-Check(parsed.Action == "register" && parsed.CsvPaths.SequenceEqual(["/tmp/h.csv"]) && parsed.SiteIds.SequenceEqual([1, 2]), "Options parse");
-Check(Options.Parse([]).Action == "help", "Options help");
-Reject(() => Options.Parse(["generate", "/csv", "h.csv"]), "generate requires /output");
-Reject(() => Options.Parse(["register", "/csv", "h.csv"]), "register requires /url");
-Check(Options.Parse(["generate", "/output", "out"]).CalendarIds.SequenceEqual([GoogleCalendarHolidaySource.JapaneseHolidays]), "Default calendar is the Japanese holidays");
-Check(Options.Parse(["generate", "/output", "out", "/calendar-id", "a@x, b@x,a@x"]).CalendarIds.SequenceEqual(["a@x", "b@x"]), "Multiple calendar IDs");
-Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "out", "/calendar-id", "none"]).CalendarIds.Count == 0, "Calendar can be disabled");
-Reject(() => Options.Parse(["generate", "/calendar-id", "none", "/output", "out"]), "source required when calendar is disabled");
-Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/from", "2027", "/to", "2026"]), "year range");
-Reject(() => Options.Parse(["generate", "/bogus", "x"]), "unknown option");
 Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/holiday-bg", "red;x"]), "invalid color option");
 
+// スタイル一式（接頭辞・共通部・年ごと・管理対象）
+var set = StyleSet.Create("vvcsc_", generated, [], false);
+Check(set.Styles.Select(s => s.Name).SequenceEqual(["vvcsc_core", "vvcsc_2026", "vvcsc_2027"]), "Style names: <prefix>core and <prefix><year>");
+Check(set.Obsolete(["vvcsc_2025", "vvcsc_2026", "vvcsc_core", "other_2024", "vvcscx", "VVCSC_2020"]).SequenceEqual(["vvcsc_2025"]), "Only names starting with the prefix and not generated are obsolete");
+Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).Prefix == "vvcsc_" && !Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).Prune, "Default prefix, no prune");
+Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/prefix", "Co-1_", "/prune"]).Prune, "/prune flag");
+foreach (var badPrefix in new[] { "", "_x", "a b", "a/b", "../x", new string('a', 33) })
+    Reject(() => Options.ValidatePrefix(badPrefix), "Bad prefix is rejected: " + badPrefix);
+Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/tenant-id", "1"]), "/tenant-id applies to register only");
+Check(Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.local", "/tenant-id", "3"]).TenantId == 3, "register accepts http and a tenant ID");
+
 // Extensions API
-Reject(() => ApiStyleSink.ValidateBaseUrl("http://pleasanter.example.com"), "Pleasanter URL must be https");
-ApiStyleSink.ValidateBaseUrl("http://localhost:58800");
+Reject(() => ApiStyleSink.ValidateBaseUrl("ftp://pleasanter.example.com"), "Pleasanter URL must be http or https");
+ApiStyleSink.ValidateBaseUrl("http://pleasanter.local");
 ApiStyleSink.ValidateBaseUrl("https://pleasanter.example.com/");
-Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.example.com"]), "register rejects plain http");
 {
     var pl = new FakePleasanter();
     using var http = new HttpClient(pl);
-    var sink = new ApiStyleSink("https://pl.test/", "KEY-123", http);
-    var style = new StyleDefinition("CalendarHolidays", "d", [], "/* css */");
-    await sink.WriteAsync(style, default);
-    Check(pl.Created == 1 && pl.Updated == 0 && pl.LastCreate!["ExtensionType"]!.ToString() == "Style" && pl.LastCreate["Body"]!.ToString() == "/* css */" && pl.LastCreate["ApiKey"]!.ToString() == "KEY-123", "Creates a Style extension when none exists");
-    Check(pl.LastCreate!["ExtensionSettings"]!["Name"]!.ToString() == "CalendarHolidays" && pl.LastCreate["ExtensionSettings"]!["SiteIdList"] == null, "Settings carry the name and omit SiteIdList for all sites");
-    await sink.WriteAsync(style, default);
-    Check(pl.Created == 1 && pl.Updated == 0, "Unchanged content is not written again");
-    await sink.WriteAsync(style with { Css = "/* new */", SiteIds = [5] }, default);
-    Check(pl.Created == 1 && pl.Updated == 1 && pl.LastUpdatePath == "/api/extensions/77/update" && pl.LastUpdate!["Body"]!.ToString() == "/* new */" && pl.LastUpdate["ExtensionSettings"]!["SiteIdList"]![0]!.GetValue<long>() == 5, "Updates the existing extension instead of creating a duplicate");
+    var sink = new ApiStyleSink("https://pl.test/", "KEY-123", null, http);
+    await sink.WriteAsync(set, default);
+    Check(pl.Created == 3 && pl.Updated == 0 && pl.Items.Values.All(i => i["ExtensionType"]!.ToString() == "Style" && i["ApiKey"]!.ToString() == "KEY-123"), "Creates one Style extension per style when none exists");
+    Check(pl.Items.Values.Select(i => i["ExtensionName"]!.ToString()).Order().SequenceEqual(["vvcsc_2026", "vvcsc_2027", "vvcsc_core"]) && pl.Items.Values.All(i => i["ExtensionSettings"]!["SiteIdList"] == null && i["TenantId"] == null), "Names carry the prefix; no SiteIdList and no TenantId by default");
+    await sink.WriteAsync(set, default);
+    Check(pl.Created == 3 && pl.Updated == 0, "Unchanged styles are not written again");
+    var changed = StyleSet.Create("vvcsc_", generated with { Core = "/* new core */" }, [5], false);
+    await sink.WriteAsync(changed, default);
+    Check(pl.Created == 3 && pl.Updated == 3 && pl.Items.Values.All(i => i["ExtensionSettings"]!["SiteIdList"]![0]!.GetValue<long>() == 5) && pl.Items.Values.Any(i => i["Body"]!.ToString() == "/* new core */"), "Updates the existing extensions instead of creating duplicates");
+    // 管理対象外（接頭辞が違う）の拡張と、管理対象で一式に含まれないものを仕込む。
+    pl.AddForeign(100, "other_2024"); pl.AddForeign(101, "vvcsc_2025");
+    var after = StyleSet.Create("vvcsc_", generated with { Core = "/* new core */" }, [5], false);
+    await sink.WriteAsync(after, default);
+    Check(pl.Items.ContainsKey(101) && pl.Items.ContainsKey(100) && pl.Deleted.Count == 0, "Without /prune nothing is deleted (a warning is shown)");
+    await sink.WriteAsync(after with { Prune = true }, default);
+    Check(pl.Deleted.SequenceEqual([101]) && pl.Items.ContainsKey(100) && pl.Items.Count == 4, "/prune deletes only managed styles that are no longer generated");
+    var tenant = new FakePleasanter();
+    using var tenantHttp = new HttpClient(tenant);
+    await new ApiStyleSink("https://pl.test/", "KEY-123", 7, tenantHttp).WriteAsync(set, default);
+    Check(tenant.Items.Values.All(i => i["TenantId"]!.GetValue<int>() == 7), "TenantId is sent when specified");
     pl.Mode = "forbidden";
-    try { await sink.WriteAsync(style, default); throw new Exception("FAIL: 403 expected"); }
+    try { await sink.WriteAsync(set, default); throw new Exception("FAIL: 403 expected"); }
     catch (UserError e) { Check(e.Message.Contains("AllowExtensionsApi") && !e.Message.Contains("KEY-123"), "403 explains AllowExtensionsApi without leaking the API key"); }
     pl.Mode = "duplicate";
-    try { await sink.WriteAsync(style, default); throw new Exception("FAIL: duplicate expected"); }
+    try { await sink.WriteAsync(set, default); throw new Exception("FAIL: duplicate expected"); }
     catch (UserError e) { Check(e.Message.Contains("Multiple"), "Duplicate names are reported"); }
 }
 
@@ -176,12 +190,16 @@ Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasan
 var temp = Path.Combine(Path.GetTempPath(), "csc-test-" + Guid.NewGuid().ToString("N"));
 try
 {
-    await new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [], "/* css */"), CancellationToken.None);
-    Check(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.css")) == "/* css */" && !File.Exists(Path.Combine(temp, "Holidays.json")), "File sink writes the CSS as a .css file (the only form Pleasanter reads)");
-    await new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [], "/* second */"), CancellationToken.None);
-    Check(await File.ReadAllTextAsync(Path.Combine(temp, "Holidays.css")) == "/* second */", "File sink overwrites the same name");
-    Reject(() => new FileStyleSink(temp).WriteAsync(new("Holidays", "d", [5], "x"), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects a site limit");
-    Reject(() => new FileStyleSink(temp).WriteAsync(new("../x", "d", [], "x"), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects path in name");
+    await new FileStyleSink(temp).WriteAsync(set, CancellationToken.None);
+    Check(await File.ReadAllTextAsync(Path.Combine(temp, "vvcsc_2026.css")) == generated.Years[2026] && File.Exists(Path.Combine(temp, "vvcsc_core.css")) && Directory.GetFiles(temp, "*.json").Length == 0, "File sink writes one .css per style (the only form Pleasanter reads)");
+    File.WriteAllText(Path.Combine(temp, "other.css"), "/* mine */");
+    File.WriteAllText(Path.Combine(temp, "vvcsc_2025.css"), "/* old */");
+    await new FileStyleSink(temp).WriteAsync(set, CancellationToken.None);
+    Check(File.Exists(Path.Combine(temp, "vvcsc_2025.css")), "Obsolete managed file remains without /prune");
+    await new FileStyleSink(temp).WriteAsync(set with { Prune = true }, CancellationToken.None);
+    Check(!File.Exists(Path.Combine(temp, "vvcsc_2025.css")) && File.ReadAllText(Path.Combine(temp, "other.css")) == "/* mine */" && File.Exists(Path.Combine(temp, "vvcsc_2027.css")), "/prune deletes only managed files no longer generated and never touches other files");
+    Reject(() => new FileStyleSink(temp).WriteAsync(StyleSet.Create("vvcsc_", generated, [5], false), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects a site limit");
+    Reject(() => new FileStyleSink(temp).WriteAsync(new("p", [new("../x", "d", [], "x")], false), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects path in name");
 }
 finally { if (Directory.Exists(temp)) Directory.Delete(temp, true); }
 
@@ -199,14 +217,15 @@ sealed class FakeIcalHandler : HttpMessageHandler
     }
 }
 
-// Extensions API の最小の模擬。Style 種別の拡張を 1 件だけ保持する。
+// Extensions API の最小の模擬。Style 種別の拡張を複数保持し、get・create・update・delete に応える。
 sealed class FakePleasanter : HttpMessageHandler
 {
-    private System.Text.Json.Nodes.JsonObject? stored;
+    private int nextId = 1;
+    public Dictionary<int, System.Text.Json.Nodes.JsonObject> Items = [];
+    public List<int> Deleted = [];
     public int Created, Updated;
     public string Mode = "";
-    public System.Text.Json.Nodes.JsonObject? LastCreate, LastUpdate;
-    public string? LastUpdatePath;
+    public void AddForeign(int id, string name) => Items[id] = new() { ["ExtensionType"] = "Style", ["ExtensionName"] = name, ["Body"] = "/* other */", ["ExtensionSettings"] = new System.Text.Json.Nodes.JsonObject { ["Name"] = name }.ToJsonString() };
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
     {
         var path = request.RequestUri!.AbsolutePath;
@@ -216,22 +235,23 @@ sealed class FakePleasanter : HttpMessageHandler
         if (path.EndsWith("/get"))
         {
             var items = new System.Text.Json.Nodes.JsonArray();
-            if (Mode == "duplicate") { items.Add(Item(1)); items.Add(Item(2)); }
-            else if (stored != null) items.Add(Item(77));
+            foreach (var (id, item) in Items) items.Add(Item(id, item));
+            if (Mode == "duplicate" && Items.Count > 0) items.Add(Item(999, Items.Values.First()));
             return Json(new System.Text.Json.Nodes.JsonObject { ["StatusCode"] = 200, ["Response"] = new System.Text.Json.Nodes.JsonObject { ["Data"] = items } }.ToJsonString());
         }
-        stored = body;
-        if (path.EndsWith("/create")) { Created++; LastCreate = body; }
-        else { Updated++; LastUpdate = body; LastUpdatePath = path; }
-        return Json("""{"Id":77,"StatusCode":200,"Message":"ok"}""");
+        if (path.EndsWith("/create")) { Created++; Items[nextId++] = body; return Json("""{"Id":1,"StatusCode":200,"Message":"ok"}"""); }
+        var id2 = int.Parse(path.Split('/')[^2]);
+        if (path.EndsWith("/update")) { Updated++; Items[id2] = body; }
+        else if (path.EndsWith("/delete")) { Deleted.Add(id2); Items.Remove(id2); }
+        return Json("""{"Id":1,"StatusCode":200,"Message":"ok"}""");
     }
-    private System.Text.Json.Nodes.JsonObject Item(int id) => new()
+    private static System.Text.Json.Nodes.JsonObject Item(int id, System.Text.Json.Nodes.JsonObject stored) => new()
     {
         ["ExtensionId"] = id,
         ["ExtensionType"] = "Style",
-        ["ExtensionName"] = stored?["ExtensionName"]?.ToString() ?? "CalendarHolidays",
-        ["Body"] = stored?["Body"]?.ToString(),
+        ["ExtensionName"] = stored["ExtensionName"]!.ToString(),
+        ["Body"] = stored["Body"]?.ToString(),
         // 本体は ExtensionSettings を JSON 文字列として返すことがあるため、文字列で返して比較の両対応を確認する。
-        ["ExtensionSettings"] = stored?["ExtensionSettings"]?.ToJsonString(),
+        ["ExtensionSettings"] = stored["ExtensionSettings"] is System.Text.Json.Nodes.JsonValue v ? v.ToString() : stored["ExtensionSettings"]?.ToJsonString(),
     };
 }

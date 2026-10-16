@@ -26,7 +26,7 @@
 2. 本体を起動し、拡張スタイルと週の開始曜日を反映する。`prepare.ps1` が `General.json`（`FirstDayOfWeek`）と `Security.json`（Administrator を `PrivilegedUsers` に）の差し替えファイルを作り、生成した `.css` を `temp/e2e/ExtendedStyles` に置き、`docker compose up -d --wait` と本体の再起動までを行う。本体はパラメーターと拡張スタイルを起動時に読むため、変更のたびに再起動が必要。
 
    ```powershell
-   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out/CalendarHolidays.css -FirstDayOfWeek 1
+   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out -FirstDayOfWeek 1
    ```
 
 3. 作業用フォルダで、期限付きテーブルとレコードを作る（空の DB で一度だけ）。ログイン状態と SiteId は `e2e-state.json` と `e2e-ids.json` に書かれる。
@@ -39,18 +39,18 @@
 4. 標準カレンダーと FullCalendar を確認する。`verify.mjs` は期限付きテーブルのカレンダー種別を切り替え（標準 `1`、FullCalendar `2`）、各表示で全セルの色・祝日名を期待値と比べる。NG があれば終了コード 1。スクリーンショットは第 3 引数のフォルダに出る。
 
    ```powershell
-   node ../../_development/e2e/verify.mjs standard out/CalendarHolidays.css shots mon
-   node ../../_development/e2e/verify.mjs full     out/CalendarHolidays.css shots mon
+   node ../../_development/e2e/verify.mjs standard out shots mon
+   node ../../_development/e2e/verify.mjs full     out shots mon
    ```
 
 5. 週の開始曜日を日曜に変えて再確認する（ラベルに `sun` を含める）。
 
    ```powershell
    cd ../..
-   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out/CalendarHolidays.css -FirstDayOfWeek 0
+   pwsh _development/e2e/prepare.ps1 -StyleCss temp/e2e/out -FirstDayOfWeek 0
    cd temp/e2e
-   node ../../_development/e2e/verify.mjs standard out/CalendarHolidays.css shots sun
-   node ../../_development/e2e/verify.mjs full     out/CalendarHolidays.css shots sun
+   node ../../_development/e2e/verify.mjs standard out shots sun
+   node ../../_development/e2e/verify.mjs full     out shots sun
    ```
 
 6. Extensions API 方式を確認する。`extensions-api.mjs` がテナントの `AllowExtensionsApi` を有効にし、Administrator の API キーを作って `/api/extensions/` の create・get・update・delete を呼ぶ（動作確認用の拡張は消す）。API キーは `temp/e2e/e2e-apikey.txt` に書かれる（管理外）。その後 `register` で登録し、ファイルの `.css` を外して再起動してから手順 4 を繰り返す。

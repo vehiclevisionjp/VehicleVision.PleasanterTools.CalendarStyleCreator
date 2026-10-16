@@ -32,7 +32,7 @@ Linux の例です。
 dotnet /home/site/wwwroot/CalendarStyleCreator/VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output /home/site/wwwroot/Implem.Pleasanter/App_Data/Parameters/ExtendedStyles
 ```
 
-拡張スタイルは本体の起動時に読み込まれるため、配置後にアプリを再起動してください。ファイルの `.css` は全サイトに適用されます（サイトを限定するときは次の API 登録）。本体の再配置で `App_Data` が置き換わる運用では、再配置のたびに再実行するか、次の API 登録を使います。
+拡張スタイルは本体の起動時に読み込まれるため、配置後にアプリを再起動してください。`vvcsc_core.css` と `vvcsc_{年}.css` が出力されます。年が変わったら再実行し、過ぎた年のファイルを消すときは `/prune` を付けます（接頭辞で始まるファイルだけが対象で、他のファイルには触れません）。ファイルの `.css` は全サイトに適用されます（サイトを限定するときは次の API 登録）。本体の再配置で `App_Data` が置き換わる運用では、再配置のたびに再実行するか、次の API 登録を使います。
 
 ## API 登録（register）
 
@@ -47,7 +47,9 @@ dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.C
 - API キーは、拡張機能を管理できるユーザー（テナント管理者など）のものを使います。App Service のアプリ設定に `CALENDARSTYLE_PLEASANTER_API_KEY` として登録し、コマンドラインには書かないでください。
 - `/site-id` で適用サイトを限定できます。登録後はアプリの再起動が必要です。
 - 同名の拡張スタイルがあれば更新し、なければ作成します。内容が同じなら何もしません。
-- URL は https が必要です（localhost の検証用だけ http を許可）。
+- URL は http も使えます（Pleasanter の API に https の制限はありません）。ただし API キーが平文で流れるので、http のときは警告を出します。
+- 拡張は API キーの持ち主のテナントに登録されます。別のテナントにするときは `/tenant-id` を指定してください。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます。
+- スタイルは `vvcsc_core` と `vvcsc_{年}` の組で登録されます（`/prefix` で変更可）。今回の範囲から外れた年（過ぎた年など）を消すときは `/prune` を付けます。接頭辞で始まるものだけが対象です。
 
 ## 設定ファイル
 

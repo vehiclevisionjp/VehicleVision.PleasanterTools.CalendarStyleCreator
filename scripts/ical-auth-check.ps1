@@ -42,7 +42,7 @@ http {
        icalUrls = @(@{ url = "$base/bearer/team.ics"; bearerTokenEnv = 'T_TOKEN' }, @{ url = "$base/basic/team.ics"; basicUserEnv = 'T_USER'; basicPasswordEnv = 'T_PASS' }) } | ConvertTo-Json -Depth 5 | Set-Content $config -Encoding utf8
     $env:T_TOKEN = 'tok-123'; $env:T_USER = 'user'; $env:T_PASS = 'pass123'
     Run @('generate', '/config', $config) 0 'Done\. 1 holiday'
-    if ((Get-Content (Join-Path $work 'out/CalendarHolidays.json') -Raw) -notmatch 'Private holiday') { throw 'Holiday from the authenticated iCal is missing.' }
+    if ((Get-Content (Join-Path $work 'out/vvcsc_2026.css') -Raw -Encoding utf8) -notmatch 'Private holiday') { throw 'Holiday from the authenticated iCal is missing.' }
     $env:T_TOKEN = 'bad-token'
     Run @('generate', '/config', $config) 2 'HTTP 401'
     $env:T_TOKEN = 'tok-123'; $env:T_PASS = 'wrong'

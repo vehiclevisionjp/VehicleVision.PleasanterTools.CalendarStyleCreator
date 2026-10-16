@@ -1,5 +1,5 @@
 // 生成した拡張スタイルが標準カレンダーと FullCalendar で効いているかを DOM と getComputedStyle で確認する。
-// 使い方（作業用フォルダで）: node verify.mjs <standard|full> <generate が出した .css> <スクリーンショット出力先> [ラベル]
+// 使い方（作業用フォルダで）: node verify.mjs <standard|full> <generate の出力フォルダ、または .css> <スクリーンショット出力先> [ラベル]
 // ラベルに sun を含めると週の開始曜日が日曜（FirstDayOfWeek=0）の期待値で見出し順を確認する。
 // 結果は JSON を標準出力へ。NG が 1 件でもあれば終了コード 1。色は既定テーマ（CalendarTheme の既定値）を期待値にする。
 import fs from 'node:fs';
@@ -16,7 +16,8 @@ const HOLIDAY_BG = 'rgb(255, 240, 243)', SAT_BG = 'rgb(232, 243, 255)', HOLIDAY_
 const CUSTOM_BG = [HOLIDAY_BG, SAT_BG];
 
 // 生成した CSS から祝日（yyyy-MM-dd → 名称）を取り出す（FullCalendar の祝日名ルールが日付を持つ）。
-const css = fs.readFileSync(cssFile, 'utf8').replace(/^\uFEFF/, '');
+// 出力フォルダなら、共通部と年ごとの .css をすべて連結して使う（本体も全ファイルを読み込む）。
+const css = (fs.statSync(cssFile).isDirectory() ? fs.readdirSync(cssFile).filter(f => f.endsWith('.css')).sort().map(f => fs.readFileSync(path.join(cssFile, f), 'utf8')) : [fs.readFileSync(cssFile, 'utf8')]).join('\n').replace(/^\uFEFF/, '');
 const holidays = {};
 for (const m of css.matchAll(/\[data-date="(\d{4}-\d\d-\d\d)"\]:not\(\.fc-day-other\) \.fc-daygrid-day-top::after[^{]*\{[^}]*content: "([^"]*)"/g)) holidays[m[1]] = m[2];
 

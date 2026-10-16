@@ -16,7 +16,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 
 | 方式 | コマンド | 内容 |
 | --- | --- | --- |
-| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/{名前}.css` を書き出す（全サイトに適用） |
+| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/` に `.css` を書き出す（全サイトに適用） |
 | API 登録 | `register` | Extensions API で拡張スタイルを登録・更新する（同名は更新） |
 
 ## 使う
@@ -37,7 +37,9 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /p "C:\we
 | `/p <フォルダ>` | `generate` の出力先を、本体フォルダ（`App_Data` のある `Implem.Pleasanter` またはその親）から決める。CodeDefiner と同じ指定。省略時は、このツールの兄弟フォルダ `Implem.Pleasanter` を使う |
 | `/output <フォルダ>` | `generate` の出力先を直接指定（`/p` より優先） |
 | `/site-id 1,2` | 適用サイトを限定（`register` のみ。省略時は全サイト） |
-| `/name` | 拡張スタイル名（既定: `CalendarHolidays`） |
+| `/prefix <文字列>` | スタイル名の接頭辞（既定: `vvcsc_`）。英数字・`_`・`-` で 32 文字まで |
+| `/prune` | この接頭辞で始まり、今回は生成しなくなったスタイル（過ぎた年など）を削除する |
+| `/tenant-id <n>` | `register` のみ。拡張のテナント（省略時は API キーの持ち主のテナント） |
 
 ### 認証付きの iCal
 
@@ -61,6 +63,17 @@ CSV は [内閣府の「国民の祝日」CSV](https://www8.cao.go.jp/chosei/shu
 
 ファイル配置・API 登録のどちらも、反映には Pleasanter の再起動が必要です（拡張スタイルは起動時に読み込まれます）。サイトを限定したい場合は API 登録を使います（ファイルの `.css` は全サイトに適用されます）。
 
+## 生成されるスタイル
+
+接頭辞付きで、共通部と年ごとに分けて配置します。
+
+| 名前（既定の接頭辞） | 内容 |
+| --- | --- |
+| `vvcsc_core` | FullCalendar の土日の色（年に依存しない） |
+| `vvcsc_2026`、`vvcsc_2027` … | その年の祝日・祝日名と、標準カレンダーの土日 |
+
+年が変わったら、新しい年のスタイルが増えるだけで、共通部と過去の年は変わりません。接頭辞で始まるものだけをこのツールの管理対象とし、他のスタイルには触れません。今回の範囲に入らなくなった管理対象（過ぎた年など）は、既定では残して警告を出し、`/prune` を付けたときだけ削除します。
+
 ## API 登録
 
 ```powershell
@@ -69,6 +82,9 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 ```
 
 テナントの拡張機能 API（`AllowExtensionsApi`）を有効にし、拡張機能を管理できるユーザーの API キーを使います。同名の拡張スタイルがあれば更新し、内容が同じなら何もしません。
+
+- **テナント**: 拡張は API キーの持ち主のテナントに登録されます。別のテナントにする場合は `/tenant-id` を指定します。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます（本体は全テナントの拡張を起動時に読み込みます）。
+- **http**: Pleasanter の API に https の制限はないため http の URL も使えますが、API キーが平文で流れるため警告を出します。
 
 ## 設定ファイル
 
