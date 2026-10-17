@@ -2,6 +2,11 @@
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 
+// 検証の「今日」。実際の日付に依存しないよう、ブラウザの Date（new Date() と Date.now()）をこの日時に固定する。
+// seed.mjs・verify.mjs の日付（祝日 10/12、今日 10/16 など）はこの日付が前提。
+export const ANCHOR_ISO = '2026-10-16T12:00:00Z';
+export const ANCHOR_DATE = '2026/10/16';
+
 export const base = process.env.E2E_BASE ?? 'http://127.0.0.1:58801';
 const password = process.env.E2E_PASSWORD ?? 'E2e_Test_only_123!';
 const stateFile = process.env.E2E_STATE ?? 'e2e-state.json';
@@ -11,6 +16,8 @@ export async function open() {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const context = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1400, height: 900 }, storageState: fs.existsSync(stateFile) ? stateFile : undefined });
   const page = await context.newPage();
+  // タイマーは止めず、Date だけを固定する（FullCalendar の today ボタンとプロット位置がこの日付になる）。
+  await page.clock.setFixedTime(new Date(ANCHOR_ISO));
   page.on('dialog', d => d.accept());
   // 本体の再起動直後は最初の要求が失敗することがあるため、数回やり直す。
   for (let i = 0; ; i++) {

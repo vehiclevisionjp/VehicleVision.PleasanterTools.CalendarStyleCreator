@@ -1,10 +1,11 @@
 // 生成した拡張スタイルが標準カレンダーと FullCalendar で効いているかを DOM と getComputedStyle で確認する。
 // 使い方（作業用フォルダで）: node verify.mjs <standard|full> <generate の出力フォルダ、または .css> <スクリーンショット出力先> [ラベル]
 // ラベルに sun を含めると週の開始曜日が日曜（FirstDayOfWeek=0）の期待値で見出し順を確認する。
+// 検証の「今日」は 2026-10-16 に固定する（lib.mjs の ANCHOR_*）。実際の日付に依存しない。
 // 結果は JSON を標準出力へ。NG が 1 件でもあれば終了コード 1。色は既定テーマ（CalendarTheme の既定値）を期待値にする。
 import fs from 'node:fs';
 import path from 'node:path';
-import { open, base, setCalendarType } from './lib.mjs';
+import { open, base, setCalendarType, ANCHOR_DATE } from './lib.mjs';
 
 const [mode, cssFile, shotDir, label = ''] = process.argv.slice(2);
 const siteId = JSON.parse(fs.readFileSync('e2e-ids.json', 'utf8')).table;
@@ -100,10 +101,18 @@ if (mode === 'standard') {
     }
   };
   const header = () => page.evaluate(() => [...document.querySelectorAll('#CalendarBody th')].map(e => e.className.split(' ')[0]));
-  const move = async kind => { await page.evaluate(k => $p.moveCalendar(k, ''), kind); await page.waitForTimeout(1500); };
+  const goTo = async d => { await page.evaluate(date => { $p.clearData(); const $c = $('#CalendarDate'); $c.val(date); $p.setData($c); $p.send($c); }, d); await page.waitForTimeout(1500); };
+  const move = async kind => {
+    // 標準カレンダーの「今日」はサーバーの日付（#CalendarToday）なので使わず、検証の「今日」（ANCHOR_DATE）を日付欄へ直接入れて移動する。
+    // 実際の日付が何日でも同じ画面になる。
+    if (kind === 'Today') { await goTo(ANCHOR_DATE); return; }
+    await page.evaluate(k => $p.moveCalendar(k, ''), kind);
+    await page.waitForTimeout(1500);
+  };
 
   // 表示期間は利用者ごとに保存されるため、前回の実行の影響を避けて月表示から始める。
   if ((await page.inputValue('#CalendarTimePeriod')) !== 'Monthly') { await page.selectOption('#CalendarTimePeriod', 'Monthly'); await page.waitForTimeout(2000); }
+  await goTo('2028/02/01');   // 遠い月から始めて、検証の「今日」へ戻れることも確認する
   await move('Today');
   // 月表示: 2026-10（今日 10/16。10/12 祝日、10/25 日曜祝日、10/31 土曜祝日）と 2026-11（11/3・11/23）。
   const order = await header();
@@ -196,6 +205,7 @@ if (mode === 'standard') {
 
   // 表示は前回の状態が残るため、月表示・今日から始める。
   await click('.fc-dayGridMonth-button', 1200);
+  for (let i = 0; i < 3; i++) await click('.fc-next-button', 500);   // 遠い月から始めて、固定した「今日」へ戻れることも確認する
   await today(800);
   // 月表示
   verifyFc(await sample(), 'month-2026-10');

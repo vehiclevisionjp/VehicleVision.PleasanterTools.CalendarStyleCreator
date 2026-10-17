@@ -82,3 +82,11 @@
 ## 本体の画面が変わったとき
 
 `lib.mjs` は本体の要素 ID（`#NewMenuContainer`、`#OpenSiteTitleDialog`、`#CreateByTemplate`、`#CalendarType`、`#CreateCommand` など）に、`verify.mjs` は `#CalendarBody`・`#CalendarTimePeriod`・`$p.moveCalendar`・`.fc-*-button` に依存する。固定参照コミットを更新して失敗した場合は、該当箇所を本体の画面に合わせて直す。`seed.mjs` の日付は 2026-10 を前提にしている（今日が 2026-10-16 の実行を想定）。
+
+## 検証の「今日」
+
+画面の確認は、実際の日付に依存しないよう「今日」を 2026-10-16 に固定している（`lib.mjs` の `ANCHOR_ISO`・`ANCHOR_DATE`）。
+
+- ブラウザの `Date` は Playwright の `page.clock.setFixedTime` で固定する（タイマーは止めない）。FullCalendar の today ボタンと、初期表示のプロット位置がこの日付になる。
+- 標準カレンダーの「今日」はサーバーの日付（`#CalendarToday`）で、ブラウザからは変えられない。そのため `verify.mjs` は、`$p.moveCalendar('Today')` の代わりに日付欄（`#CalendarDate`）へ `2026/10/16` を直接入れて移動する。
+- レコードと祝日の日付は固定（`seed.mjs`、`extra.csv`）。今日の日付が変わっても、同じ画面・同じ期待値で確認できる。
