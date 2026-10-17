@@ -9,6 +9,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 - 日曜・祝日の背景色と日付の文字色（同じ色）
 - 土曜日の背景色と日付の文字色
 - 祝日名（標準カレンダーの月・週表示、FullCalendar の月・週・日・リスト表示）
+- FullCalendar のリスト表示も、土日・祝日の日付行に色を付ける
 
 ## 配置方式
 
@@ -33,7 +34,7 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /p "C:\we
 | `/ical-url <url,...>` | iCal（.ics）の https URL をカンマ区切りで複数指定。`IcalUrls` を上書き。既定の日本の祝日にも足される |
 | `/csv <file>` | CSV からも読む。同じ日付は CSV が優先 |
 | `/from 2026 /to 2027` | 出力する年の範囲（既定: 今年と来年）。範囲外の休日と土日は出力しない |
-| `/holiday-bg` `/saturday-bg` `/holiday-text` `/saturday-text` | 色（`#rrggbb` または色名） |
+| `/holiday-bg` `/saturday-bg` `/weekday-bg` `/holiday-text` `/saturday-text` `/weekday-text` | 色（`#rrggbb` または色名）。平日の既定は背景なし（`transparent`）・文字色は継承（`inherit`） |
 | `/p <フォルダ>` | `generate` の出力先を、本体フォルダ（`App_Data` のある `Implem.Pleasanter` またはその親）から決める。CodeDefiner と同じ指定。省略時は、このツールの兄弟フォルダ `Implem.Pleasanter` を使う |
 | `/output <フォルダ>` | `generate` の出力先を直接指定（`/p` より優先） |
 | `/site-id 1,2` | 適用サイトを限定（`register` のみ。省略時は全サイト） |
@@ -58,7 +59,21 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /ical-url
 
 https のみ使えます。認証付きの場合はリダイレクトを追従せず、資格情報を別のホストへ送りません。Google の「非公開 iCal 形式のアドレス」のように URL 自体が秘密の場合も `/ical-url` で指定できます（URL はメッセージに出しません）。
 
-CSV は [内閣府の「国民の祝日」CSV](https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv) をそのまま読めます（Shift_JIS・UTF-8 どちらも可）。自作する場合は `日付,名前` の 1 行 1 休日です（例: [examples/holidays.csv](examples/holidays.csv)）。
+## CSV と取得元の併用
+
+CSV は [内閣府の「国民の祝日」CSV](https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv) をそのまま読めます（Shift_JIS・UTF-8 どちらも可）。自作する場合は `日付,名前[,種類]` の 1 行 1 日です（例: [examples/holidays.csv](examples/holidays.csv)）。
+
+Google カレンダー（`GoogleCalendarIds`）・iCal・CSV は併用でき、すべての取得元の日付を 1 つにまとめます。日付ごとの色は 3 種類で、CSV の第 3 列（種類）で指定します。Google カレンダーと iCal の予定は日祝です。
+
+| 種類（CSV の第 3 列） | 色 |
+| --- | --- |
+| `日祝`（既定。`祝日`・`holiday` も可） | 日曜・祝日の色 |
+| `土`（`土曜`・`sat` も可） | 土曜の色 |
+| `平日`（`weekday` も可） | 土日の色を打ち消して通常の色にする（土曜の振替出勤日など） |
+
+同じ日付が複数あるときの優先順位は **日祝 > 土 > 平日** です。優先順位の高い種類だけが残り、低い種類は名称ごと捨てます（例: Google の祝日に `平日` を指定しても祝日のまま）。同じ種類の名称は「 / 」でつなぎます。
+
+平日の指定は、標準カレンダーの月・週表示と FullCalendar の月・週・日表示の日のセルが対象です。FullCalendar の曜日見出しとリスト表示の日付行は、平日にしても本体の既定のままです（土日の色は付きません）。
 
 標準カレンダーの土日は日付ごとに指定するため、出力範囲の年を過ぎると色が付かなくなります。年を跨ぐ前に再生成してください。
 
@@ -94,7 +109,7 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 | ファイル | 内容 |
 | --- | --- |
 | `Holidays.json` | 取得元: `GoogleCalendarIds`（配列）、`IcalUrls`（配列。文字列、または `Url` と認証用の環境変数名を持つオブジェクト）、`CsvFiles`（配列）、`FromYear`、`ToYear` |
-| `Style.json` | 見た目と名前: `Prefix`、`FirstDayOfWeek`（0 日曜〜6 土曜）、`Colors`（`HolidayBackground`・`SaturdayBackground`・`HolidayText`・`SaturdayText`） |
+| `Style.json` | 見た目と名前: `Prefix`、`FirstDayOfWeek`（0 日曜〜6 土曜）、`Colors`（`HolidayBackground`・`SaturdayBackground`・`WeekdayBackground`・`HolidayText`・`SaturdayText`・`WeekdayText`） |
 | `Placement.json` | 配置: `OutputPath`、`PleasanterPath`、`Url`、`TenantId`、`SiteIdList`、`Prune` |
 
 ```json

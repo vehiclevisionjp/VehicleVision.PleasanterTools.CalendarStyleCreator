@@ -13,7 +13,7 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
     public const string IcalBasicPasswordVariable = "CALENDARSTYLE_ICAL_BASIC_PASSWORD";
     public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
 
-    private static readonly string[] ValueOptions = ["parameters", "p", "csv", "calendar-id", "ical-url", "from", "to", "prefix", "first-day-of-week", "site-id", "tenant-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text"];
+    private static readonly string[] ValueOptions = ["parameters", "p", "csv", "calendar-id", "ical-url", "from", "to", "prefix", "first-day-of-week", "site-id", "tenant-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text", "weekday-bg", "weekday-text"];
     private static readonly string[] FlagOptions = ["prune"];
     private static readonly string[] PathOptions = ["parameters", "p", "csv", "output"];
 
@@ -56,7 +56,7 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
         IReadOnlyList<string> csv = V("csv") != null ? [V("csv")!] : config.Csv ?? [];
 
         var defaults = config.Theme ?? new CalendarTheme();
-        var theme = new CalendarTheme(V("holiday-bg") ?? defaults.HolidayBackground, V("saturday-bg") ?? defaults.SaturdayBackground, V("holiday-text") ?? defaults.HolidayText, V("saturday-text") ?? defaults.SaturdayText).Validate();
+        var theme = new CalendarTheme(V("holiday-bg") ?? defaults.HolidayBackground, V("saturday-bg") ?? defaults.SaturdayBackground, V("holiday-text") ?? defaults.HolidayText, V("saturday-text") ?? defaults.SaturdayText, V("weekday-bg") ?? defaults.WeekdayBackground, V("weekday-text") ?? defaults.WeekdayText).Validate();
         var firstDay = CssGenerator.DefaultFirstDayOfWeek;
         if (V("first-day-of-week") != null)
         {

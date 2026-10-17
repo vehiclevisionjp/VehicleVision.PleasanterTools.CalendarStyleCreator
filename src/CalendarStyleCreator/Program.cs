@@ -27,9 +27,9 @@ public static class Program
                                                   Default: {GoogleCalendarHolidaySource.JapaneseHolidays}; "none" = CSV only
                       /ical-url <url,...>         iCal (.ics) https URLs, comma separated. Alone, it replaces the default calendar.
                                                   Auth for all URLs: env {Options.IcalBearerTokenVariable}, or {Options.IcalBasicUserVariable} + {Options.IcalBasicPasswordVariable}
-                      /csv <file>                 Extra holidays from a CSV file ("date,name" per line); overrides Google on the same date
+                      /csv <file>                 Extra holidays from a CSV file ("date,name[,type]" per line; type = holiday / saturday / weekday, default holiday). Combines with calendars: per date, holiday > saturday > weekday
                       /from <year> /to <year>     Output year range for holidays and weekends (default: this year and next)
-                      /holiday-bg /saturday-bg /holiday-text /saturday-text <color>   Colors (#rrggbb or name)
+                      /holiday-bg /saturday-bg /weekday-bg /holiday-text /saturday-text /weekday-text <color>   Colors (#rrggbb or name)
                       /first-day-of-week <0-6>    First day of the week of the standard calendar: 0=Sunday .. 6=Saturday (default: 1, as in General.json)
                       /prefix <text>              Name prefix of the generated styles (default: {Options.DefaultPrefix}). Styles: <prefix>core and <prefix><year>
                       /prune                      Delete managed styles (names starting with the prefix) that are no longer generated

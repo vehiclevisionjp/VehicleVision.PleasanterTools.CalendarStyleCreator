@@ -137,18 +137,34 @@ try
 }
 finally { Directory.Delete(configDir, true); }
 
-// CSS（共通部 + 年ごと）
 var theme = new CalendarTheme();
+// 日付ごとの種類（日祝・土・平日）と、取得元の併用
+var csvTyped = CsvHolidaySource.Parse("2026-10-10,振替出勤,平日\n2026-10-11,会社の土曜扱い,土\n2026-10-12,スポーツの日\n2026-10-13,x,holiday\n2026-10-14,y,SAT\n2026-10-15,z,");
+Check(csvTyped.Select(h => h.Type).SequenceEqual([DayType.Weekday, DayType.Saturday, DayType.Holiday, DayType.Holiday, DayType.Saturday, DayType.Holiday]), "CSV type column: 平日 / 土 / default holiday / holiday / SAT / empty");
+Reject(() => CsvHolidaySource.Parse("2026-10-10,x,unknown"), "CSV invalid type");
+var d1 = new DateOnly(2026, 10, 10);
+var merged = DayResolver.Resolve([new(d1, "G", DayType.Holiday), new(d1, "C", DayType.Weekday), new(d1, "G", DayType.Holiday), new(d1, "H2", DayType.Holiday), new(new DateOnly(2026, 10, 11), "S", DayType.Saturday), new(new DateOnly(2026, 10, 11), "W", DayType.Weekday), new(new DateOnly(2026, 10, 12), "W", DayType.Weekday)]);
+Check(merged[d1].Type == DayType.Holiday && merged[d1].Name == "G / H2", "Priority holiday > weekday: the lower type and its name are dropped, same-type names are joined without duplicates");
+Check(merged[new DateOnly(2026, 10, 11)] == new Holiday(new DateOnly(2026, 10, 11), "S", DayType.Saturday) && merged[new DateOnly(2026, 10, 12)].Type == DayType.Weekday, "Priority saturday > weekday; weekday alone stays");
+var typed = CssGenerator.Generate([new(new DateOnly(2026, 10, 10), "振替出勤", DayType.Weekday), new(new DateOnly(2026, 10, 11), "土曜扱い", DayType.Saturday), new(new DateOnly(2026, 10, 12), "祝", DayType.Holiday), new(new DateOnly(2026, 10, 12), "平日にしたい", DayType.Weekday)], theme, 2026, 2026).Years[2026];
+Check(typed.Contains("td.container:is(.is-weekly, :has(> div > .day):not(.other-month)):is([data-id=\"2026/10/10\"]) { background-color: transparent; }") && typed.Contains(".day { color: inherit; }"), "Weekday type resets the weekend colors for that date");
+Check(typed.Contains("td.container:is(.is-weekly, :has(> div > .day):not(.other-month)):is([data-id=\"2026/10/11\"]) { background-color: " + theme.SaturdayBackground + "; }"), "Saturday type uses the Saturday colors on any date");
+Check(typed.Contains("td.container:is(.is-weekly, :has(> div > .day):not(.other-month)):is([data-id=\"2026/10/12\"]) { background-color: " + theme.HolidayBackground + "; }") && !typed.Contains("平日にしたい"), "Holiday beats weekday on the same date (the weekday entry and its name are dropped)");
+Check(typed.Contains("tr.fc-list-day:is(") && typed.Contains("[data-date=\"2026-01-03\"]") && typed.Contains(".fc-list-day-cushion { background-color: " + theme.SaturdayBackground + "; }") && typed.Contains(".fc-list-day-cushion { background-color: " + theme.HolidayBackground + "; }"), "FullCalendar list view: weekends are colored by date");
+Check(!System.Text.RegularExpressions.Regex.IsMatch(typed, "(th|tr\\.fc-list-day)[^{}]*\\[data-date=\"2026-10-10\"\\][^{}]*\\{ (background-color|color):"), "Weekday type is not applied to FullCalendar headers or list rows (the defaults stay)");
+Check(typed.Length < 30000, "Per-year size with the list view weekends stays small");
+
+// CSS（共通部 + 年ごと）
 var generated = CssGenerator.Generate([new(new DateOnly(2026, 2, 11), "B"), new(new DateOnly(2026, 1, 1), "A"), new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2027, 1, 1), "C")], theme, 2026, 2027);
 var css = generated.Years[2026];
 Check(generated.Years.Keys.SequenceEqual([2026, 2027]), "One style per year in the range");
 Check(!generated.Years[2026].Contains("2027/1/1") && generated.Years[2027].Contains("[data-id=\"2027/1/1\"]") && !generated.Years[2027].Contains("2026/1/1"), "Each year file contains only its own dates");
 Check(generated.Core.Contains(".fc-day-sat:where(:not(.fc-day-other)) {") && generated.Core.Contains(".fc-day-sun:where(:not(.fc-day-other)) {") && !generated.Core.Contains("data-id") && !generated.Core.Contains("data-date"), "Core holds only the FullCalendar weekday classes, no dates");
 Check(!css.Contains(".fc-day-sat"), "Year files do not repeat the weekday classes");
-Check(css.Contains("td.container:has(> div > .day):is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"]):not(.other-month)"), "Standard monthly cells share one :is() rule, no zero padding, exclude other month and yearly view");
-Check(css.Contains("td.container.is-weekly:is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"])"), "Standard weekly cells");
+Check(css.Contains("td.container:is(.is-weekly, :has(> div > .day):not(.other-month)):is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"])"), "Standard monthly and weekly cells share one :is() rule, no zero padding, exclude other month (monthly) and the yearly view");
+Check(css.Contains("td.container.is-weekly:is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"])"), "Weekly cells are also grouped for the position rule");
 Check(css.Contains("td.fc-daygrid-day[data-date=\"2026-01-01\"]:not(.fc-day-other) .fc-daygrid-day-top::after"), "FullCalendar day label");
-Check(css.Contains("content: \"A2\"") && !css.Contains("content: \"A\""), "Last duplicate wins");
+Check(css.Contains("content: \"A / A2\""), "Same-type names on one date are joined with  / ");
 Check(!css.Contains("[data-id=\"2026/1/3\"]") && !css.Contains("[data-id=\"2026/1/4\"]") && css.Length < 20000, "Year files hold only holidays (weekends are not listed by date), so they stay small");
 Check(css.Contains(":is(#CalendarBody, [id^=\"CalendarBody\"]) td.container") && css.Contains(":is(#FullCalendar, [id^=\"FullCalendar\"]).calendar-container"), "Selectors outweigh the built-in #CalendarBody td / #FullCalendar td rules (verified on a real Pleasanter)");
 Check(css.Contains("th.fc-col-header-cell:is([data-date=\"2026-01-01\"],[data-date=\"2026-02-11\"]) .fc-col-header-cell-cushion") && css.Contains(":is([data-id=\"2026/1/1\"],[data-id=\"2026/2/11\"]):not(.other-month) .day { width: auto"), "Holiday header text color and widened .day for the label");
@@ -159,7 +175,7 @@ Reject(() => CssGenerator.Generate([], theme, 2026, 2026, 7), "First day of week
 Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/first-day-of-week", "0"]).FirstDayOfWeek == 0 && Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).FirstDayOfWeek == 1, "/first-day-of-week (default Monday)");
 Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/first-day-of-week", "7"]), "/first-day-of-week out of range");
 Check(css.Contains("position: absolute") && css.Contains("td.container.is-weekly[data-id=\"2026/1/1\"]::before"), "Weekly label is absolutely positioned so multi-day bars do not shift");
-Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026).Years[2026], "CSS is deterministic and independent of other years");
+Check(css == CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "A"), new(new DateOnly(2026, 1, 1), "A2"), new(new DateOnly(2026, 2, 11), "B")], theme, 2026, 2026).Years[2026], "CSS is deterministic and independent of other years");
 Check(CssGenerator.EscapeString("a\"b\\c</style>\n") == "a\\\"b\\\\c\\3c /style\\3e  ", "CSS string escape");
 Check(!CssGenerator.Generate([new(new DateOnly(2026, 1, 1), "")], theme, 2026, 2026).Years[2026].Contains("::after"), "CSS omits label for empty name");
 Reject(() => new CalendarTheme(HolidayBackground: "red; } body { display:none").Validate(), "Color injection is rejected");

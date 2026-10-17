@@ -19,7 +19,7 @@
    ```powershell
    dotnet build -c Release
    New-Item -ItemType Directory -Force temp/e2e | Out-Null
-   "date,name`n2026-10-31,テスト土曜祝日`n2026-10-25,テスト日曜祝日" | Set-Content temp/e2e/extra.csv -Encoding utf8
+   "date,name,type`n2026-10-31,テスト土曜祝日`n2026-10-25,テスト日曜祝日`n2026-10-17,振替出勤,平日`n2026-10-18,日曜の平日扱い,平日`n2026-10-14,社内土曜扱い,土`n2026-10-12,競合する平日,平日`n2026-10-13,祝日名,日祝" | Set-Content temp/e2e/extra.csv -Encoding utf8
    dotnet src/CalendarStyleCreator/bin/Release/net10.0/VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /output temp/e2e/out /csv temp/e2e/extra.csv
    ```
 
@@ -74,7 +74,7 @@
 ## 期待する結果
 
 - 標準カレンダーの月・週・年表示、FullCalendar の月・週・日・リスト表示で、`verify.mjs` の NG が 0 件。
-- 日曜・祝日は同じ背景色と文字色、土曜は別の背景色と文字色。土曜の祝日（検証用 2026-10-31）は祝日の色。
+- 日曜・祝日は同じ背景色と文字色、土曜は別の背景色と文字色。土曜の祝日（検証用 2026-10-31）は祝日の色。`extra.csv` の種類の指定（土曜の平日扱い 10/17、日曜の平日扱い 10/18、水曜の土扱い 10/14、Google の祝日 10/12 と競合する平日指定は祝日が勝つ）が反映される。`verify.mjs` は作業用フォルダの `extra.csv` から種類を読む。
 - 前月・翌月のはみ出し日（標準は `.other-month`、FullCalendar は `.fc-day-other`）に色が付かない。標準カレンダーの年表示のセル（`data-id` が月初日）に色と祝日名が付かない。
 - 標準カレンダーの月表示（`.day::after`）・週表示（セル先頭の `::before`）と、FullCalendar の月・週・日表示・リストに祝日名が出る。標準カレンダーの週表示は月をまたぐ日にも色が付く。
 - `FirstDayOfWeek` を 0 にしても標準カレンダーの土日色が日付どおりに付く（FullCalendar は常に月曜始まり）。

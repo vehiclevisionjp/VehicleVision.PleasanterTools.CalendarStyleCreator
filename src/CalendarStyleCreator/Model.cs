@@ -3,8 +3,33 @@ namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 /// <summary>利用者の入力・設定が原因のエラー。メッセージはそのままコンソールへ出す（秘密情報を含めない）。</summary>
 public sealed class UserError(string message) : Exception(message);
 
-/// <summary>休日 1 日分。日付は暦日（時刻とタイムゾーンを持たない）。</summary>
-public sealed record Holiday(DateOnly Date, string Name);
+/// <summary>
+/// 日付ごとの色の種類。値が大きいほど優先順位が高い（日祝 &gt; 土 &gt; 平日）。
+/// 日祝は日曜・祝日と同じ色、土は土曜と同じ色、平日は土日の色を打ち消して通常の色にする（土曜の振替出勤日など）。
+/// </summary>
+public enum DayType { Weekday = 0, Saturday = 1, Holiday = 2 }
+
+/// <summary>日付ごとの指定 1 件（休日・名称・色の種類）。日付は暦日（時刻とタイムゾーンを持たない）。取得元（Google・iCal）は日祝、CSV は種類の列で指定する。</summary>
+public sealed record Holiday(DateOnly Date, string Name, DayType Type = DayType.Holiday);
+
+public static class DayResolver
+{
+    /// <summary>
+    /// 取得元をまたいで日付ごとに 1 件へまとめる。同じ日付に複数あるときは、最も優先順位の高い種類（日祝 &gt; 土 &gt; 平日）だけを残し、
+    /// 低い種類は名称ごと捨てる。同じ種類の名称は、出てきた順に「 / 」でつなぐ（重複は 1 つにする）。
+    /// </summary>
+    public static Dictionary<DateOnly, Holiday> Resolve(IEnumerable<Holiday> entries)
+    {
+        var result = new Dictionary<DateOnly, Holiday>();
+        foreach (var group in entries.GroupBy(e => e.Date))
+        {
+            var type = group.Max(e => e.Type);
+            var names = group.Where(e => e.Type == type).Select(e => e.Name).Where(n => n.Length > 0).Distinct(StringComparer.Ordinal);
+            result[group.Key] = new Holiday(group.Key, string.Join(" / ", names), type);
+        }
+        return result;
+    }
+}
 
 /// <summary>休日の取得元。Google カレンダーと CSV を同じ形で扱う。</summary>
 public interface IHolidaySource

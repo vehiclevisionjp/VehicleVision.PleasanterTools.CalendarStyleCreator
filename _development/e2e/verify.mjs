@@ -14,6 +14,7 @@ const sundayFirst = label.includes('sun');
 // 期待する色（既定テーマ）。
 const HOLIDAY_BG = 'rgb(255, 240, 243)', SAT_BG = 'rgb(232, 243, 255)', HOLIDAY_TEXT = 'rgb(176, 0, 32)', SAT_TEXT = 'rgb(21, 101, 192)';
 const CUSTOM_BG = [HOLIDAY_BG, SAT_BG];
+const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
 // 生成した CSS から祝日（yyyy-MM-dd → 名称）を取り出す（FullCalendar の祝日名ルールが日付を持つ）。
 // 出力フォルダなら、共通部と年ごとの .css をすべて連結して使う（本体も全ファイルを読み込む）。
@@ -26,13 +27,30 @@ const check = (name, ok, detail) => { results.push({ name, ok: !!ok, detail }); 
 const dow = s => new Date(s + 'T00:00:00Z').getUTCDay();   // 0 = 日曜
 const none = v => !v || v === 'none' || v === 'normal';
 
-// 日付ごとの期待（背景色・文字色・祝日名）。null は「カスタム色が付かない」。
+// 作業用フォルダの extra.csv（date,name,type）から、種類を指定した日付（日祝 / 土 / 平日）を読む。
+// Google の祝日（既定のカレンダー）と同じ日付に平日・土を指定した行は、優先順位（日祝 > 土 > 平日）で祝日が勝つ。
+const GOOGLE_HOLIDAYS = new Set(['2026-10-12', '2026-11-03', '2026-11-23']);
+const csvTypes = {};
+if (fs.existsSync('extra.csv')) {
+  for (const line of fs.readFileSync('extra.csv', 'utf8').split(/\r?\n/)) {
+    const [date, , type] = line.split(',');
+    const t = { '日祝': 'holiday', '土': 'sat', '平日': 'weekday' }[(type ?? '').trim()];
+    if (/^\d{4}-\d\d-\d\d$/.test(date) && t) csvTypes[date] = t;
+  }
+}
+
+// 日付ごとの期待（背景色・文字色・祝日名）。null は「カスタム色が付かない」。reset は平日（土日の色を打ち消す）。
 function expectFor(dateIso) {
   const name = holidays[dateIso];
-  if (name !== undefined || dow(dateIso) === 0) return { bg: HOLIDAY_BG, text: HOLIDAY_TEXT, name };
-  if (dow(dateIso) === 6) return { bg: SAT_BG, text: SAT_TEXT };
+  let type = csvTypes[dateIso];
+  if (GOOGLE_HOLIDAYS.has(dateIso)) type = 'holiday';
+  if (!type) type = name !== undefined || dow(dateIso) === 0 ? 'holiday' : dow(dateIso) === 6 ? 'sat' : null;
+  if (type === 'holiday') return { bg: HOLIDAY_BG, text: HOLIDAY_TEXT, name };
+  if (type === 'sat') return { bg: SAT_BG, text: SAT_TEXT, name };
+  if (type === 'weekday') return { bg: TRANSPARENT, text: null, name, reset: true };
   return null;
 }
+const textOk = (got, exp) => exp.reset ? got !== HOLIDAY_TEXT && got !== SAT_TEXT : got === exp.text;
 
 const { browser, page } = await open();
 await setCalendarType(page, siteId, mode === 'standard' ? '1' : '2');
@@ -71,7 +89,7 @@ if (mode === 'standard') {
         else check(`${view} ${c.id} no name`, none(c.before), { got: c.before });
       } else if (exp) {
         check(`${view} ${c.id} bg`, c.bg === exp.bg, { got: c.bg, want: exp.bg });
-        check(`${view} ${c.id} day color`, c.color === exp.text, { got: c.color, want: exp.text });
+        check(`${view} ${c.id} day color`, textOk(c.color, exp), { got: c.color, want: exp.text });
         if (exp.name) check(`${view} ${c.id} name`, c.after === `"${exp.name}"`, { got: c.after, want: exp.name });
         else check(`${view} ${c.id} no name`, none(c.after), c);
       } else {
@@ -136,6 +154,8 @@ if (mode === 'standard') {
         numberColor: number ? getComputedStyle(number).color : null,
         cushionColor: cushion ? getComputedStyle(cushion).color : null,
         topAfter: pseudo(top), cushionAfter: pseudo(cushion), listAfter: pseudo(listText),
+        listBg: el.querySelector('.fc-list-day-cushion') ? getComputedStyle(el.querySelector('.fc-list-day-cushion')).backgroundColor : null,
+        listColor: listText ? getComputedStyle(listText).color : null,
         other: el.classList.contains('fc-day-other')
       };
     });
@@ -147,14 +167,19 @@ if (mode === 'standard') {
       const exp = o.other ? null : expectFor(o.date);
       if (o.tag === 'TR') {
         // リストの日見出しは行ではなく、見出しの a（.fc-list-day-text）に祝日名が付く。
+        // 土日・祝日・指定した種類の色（見出しの背景と日付の文字色）。
+        if (exp && !exp.reset) { check(`${view} ${kind} ${o.date} list bg`, o.listBg === exp.bg, { got: o.listBg, want: exp.bg }); check(`${view} ${kind} ${o.date} list text color`, textOk(o.listColor, exp), { got: o.listColor, want: exp.text }); }
+        else check(`${view} ${kind} ${o.date} list no custom bg (default)`, !CUSTOM_BG.includes(o.listBg), { got: o.listBg });
         if (exp?.name) check(`${view} ${kind} ${o.date} list label`, o.listAfter === `"${exp.name}"`, { got: o.listAfter, want: exp.name });
         else check(`${view} ${kind} ${o.date} no list label`, none(o.listAfter), { got: o.listAfter });
         continue;
       }
-      if (exp) {
+      if (exp && exp.reset && o.tag === 'TH') {
+        // 平日の指定は日のセルだけを打ち消す。見出しは本体の既定（土日の列なら曜日クラスの色）のまま。
+      } else if (exp) {
         check(`${view} ${kind} ${o.date} bg`, o.bg === exp.bg, { got: o.bg, want: exp.bg });
-        if (o.numberColor) check(`${view} ${kind} ${o.date} number color`, o.numberColor === exp.text, { got: o.numberColor, want: exp.text });
-        if (o.tag === 'TH' && o.cushionColor) check(`${view} ${kind} ${o.date} header text color`, o.cushionColor === exp.text, { got: o.cushionColor, want: exp.text });
+        if (o.numberColor) check(`${view} ${kind} ${o.date} number color`, textOk(o.numberColor, exp), { got: o.numberColor, want: exp.text });
+        if (o.tag === 'TH' && o.cushionColor) check(`${view} ${kind} ${o.date} header text color`, textOk(o.cushionColor, exp), { got: o.cushionColor, want: exp.text });
         if (exp.name) {
           const got = o.tag === 'TH' ? o.cushionAfter : o.topAfter;
           if (o.tag === 'TH' || (kind.includes('daygrid') && view.startsWith('month'))) check(`${view} ${kind} ${o.date} name`, got === `"${exp.name}"`, { got, want: exp.name });

@@ -49,13 +49,15 @@ try {
         foreach ($file in 'Holidays.json', 'Style.json', 'Placement.json') { if (-not (Test-Path -LiteralPath (Join-Path $wwwroot "CalendarStyleCreator/App_Data/Parameters/$file"))) { throw "Default parameter file is missing from the package: $file" } }
         $script:count++
         # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへ書き出す。
-        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'Done\. 4 holiday'
+        Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'Done. 7 holiday'
         $core = Join-Path $styles 'vvcsc_core.css'
         $year = Join-Path $styles 'vvcsc_2026.css'
         if (-not (Test-Path -LiteralPath $core) -or -not (Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2027.css'))) { throw 'Core and per-year styles were not generated.' }
         $css = Get-Content -LiteralPath $year -Raw -Encoding utf8
         if ($css -notmatch 'data-id="2026/1/1"' -or $css -notmatch 'data-date="2026-01-01"') { throw 'Generated extended style is missing expected selectors.' }
         if ($css -notmatch '元日') { throw 'Japanese holiday names were not preserved in the generated file.' }
+        # CSV の第 3 列（種類）: 平日（振替出勤）は土日の色を打ち消す。
+        if ($css -notmatch '振替出勤' -or $css -notmatch 'background-color: transparent') { throw 'The weekday type in the CSV was not applied.' }
         $script:count++
         # 管理対象（接頭辞）の古いファイルは /prune のときだけ消え、それ以外のファイルには触れない。
         Set-Content -LiteralPath (Join-Path $styles 'vvcsc_2025.css') -Value '/* old */'
@@ -65,16 +67,16 @@ try {
         Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles,'/prune') -ExpectedText 'Deleted obsolete style'
         if ((Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2025.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'mine.css'))) { throw '/prune did not limit itself to managed files.' }
         $script:count++
-        Invoke-Checked -Arguments @('generate','/parameters',$parameters) -ExpectedText 'Done\. 4 holiday'
+        Invoke-Checked -Arguments @('generate','/parameters',$parameters) -ExpectedText 'Done. 7 holiday'
         if (-not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_core.css')) -or -not (Test-Path -LiteralPath (Join-Path $styles 'Smoke_2026.css'))) { throw 'Parameter files were not applied.' }
         $script:count++
         Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/output',$styles,'/site-id','100') -ExpectedExit 2 -ExpectedText 'applies to all sites'
         Invoke-Checked -Arguments @('generate','-output',$styles,'/csv',$csv) -ExpectedExit 2 -ExpectedText 'Options start with /'
         # /output も /p も省略: 隣の Implem.Pleasanter を既定の出力先にする（配布 ZIP の標準の配置）。
         Remove-Item -LiteralPath (Join-Path $styles 'vvcsc_2026.css')
-        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/from','2026','/to','2026') -ExpectedText 'Done\. 4 holiday'
+        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/from','2026','/to','2026') -ExpectedText 'Done. 7 holiday'
         if (-not (Test-Path -LiteralPath (Join-Path $styles 'vvcsc_2026.css'))) { throw 'The default output folder beside the tool was not used.' }
-        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/p',$pleasanter,'/from','2026','/to','2026') -ExpectedText 'Done\. 4 holiday'
+        Invoke-Checked -Arguments @('generate','/csv',$csv,'/calendar-id','none','/p',$pleasanter,'/from','2026','/to','2026') -ExpectedText 'Done. 7 holiday'
         Invoke-Checked -Arguments @('generate','/ical-url','http://example.invalid/a.ics','/output',$styles) -ExpectedExit 2 -ExpectedText 'must be an absolute https URL'
         # API 登録: 到達できない URL でも資格情報を出力せず、英語のエラーで終了する。
         $env:CALENDARSTYLE_PLEASANTER_API_KEY = 'PRIVATE_TEST_MARKER_DO_NOT_LOG'

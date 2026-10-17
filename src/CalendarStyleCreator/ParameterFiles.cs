@@ -41,7 +41,7 @@ public sealed class ParameterFiles
     private static readonly string[] HolidaysKeys = ["GoogleCalendarIds", "IcalUrls", "CsvFiles", "FromYear", "ToYear"];
     private static readonly string[] StyleKeys = ["Prefix", "FirstDayOfWeek", "Colors"];
     private static readonly string[] PlacementKeys = ["OutputPath", "PleasanterPath", "Url", "TenantId", "SiteIdList", "Prune"];
-    private static readonly string[] ColorKeys = ["HolidayBackground", "SaturdayBackground", "HolidayText", "SaturdayText"];
+    private static readonly string[] ColorKeys = ["HolidayBackground", "SaturdayBackground", "HolidayText", "SaturdayText", "WeekdayBackground", "WeekdayText"];
     private static readonly string[] IcalKeys = ["Url", "BearerTokenEnv", "BasicUserEnv", "BasicPasswordEnv"];
 
     /// <summary>既定のフォルダ（このツールの App_Data/Parameters）。無ければ null。</summary>
@@ -154,6 +154,6 @@ public sealed class ParameterFiles
         CheckKeys(value, ColorKeys, "Colors");
         var defaults = new CalendarTheme();
         string Pick(string key, string fallback) => value.TryGetProperty(key, out var v) && v.ValueKind != JsonValueKind.Null ? Str(v, key) : fallback;
-        return new CalendarTheme(Pick("HolidayBackground", defaults.HolidayBackground), Pick("SaturdayBackground", defaults.SaturdayBackground), Pick("HolidayText", defaults.HolidayText), Pick("SaturdayText", defaults.SaturdayText)).Validate();
+        return new CalendarTheme(Pick("HolidayBackground", defaults.HolidayBackground), Pick("SaturdayBackground", defaults.SaturdayBackground), Pick("HolidayText", defaults.HolidayText), Pick("SaturdayText", defaults.SaturdayText), Pick("WeekdayBackground", defaults.WeekdayBackground), Pick("WeekdayText", defaults.WeekdayText)).Validate();
     }
 }
