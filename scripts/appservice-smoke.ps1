@@ -86,3 +86,5 @@ try {
 }
 Write-Output "App Service layout smoke checks passed ($Platform): $count."
 Write-Output "Fixture retained under: $smokeHome"
+# 最後に実行した CLI の終了コード（期待した失敗の 2）がスクリプトの終了コードにならないよう、成功を明示する。
+exit 0
