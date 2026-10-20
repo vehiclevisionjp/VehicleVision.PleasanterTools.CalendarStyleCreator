@@ -9,6 +9,7 @@ permissions:
   contents: read
 jobs:
   npm-audit:
+    name: npm 依存の脆弱性検査
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,6 +20,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=moderate
   nuget-audit:
+    name: NuGet 依存の脆弱性検査
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,3 +37,13 @@ jobs:
           name: NuGet-audit
           path: artifacts/vulnerable.json
           if-no-files-found: warn
+  notice-consistency:
+    name: NOTICE と依存の整合検査
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          persist-credentials: false
+      - run: bash scripts/notice-check.sh
