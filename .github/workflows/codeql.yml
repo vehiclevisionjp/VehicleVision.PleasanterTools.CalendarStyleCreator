@@ -11,6 +11,7 @@ permissions:
   security-events: write
 jobs:
   analyze:
+    name: CodeQL 解析（C#）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
