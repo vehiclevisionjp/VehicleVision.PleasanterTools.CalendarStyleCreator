@@ -15,7 +15,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
 jobs:
   build-test:
-    name: ビルドと単体テスト
+    name: build-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -46,7 +46,7 @@ jobs:
           if-no-files-found: error
 
   appservice-layout:
-    name: App Service 配置（${{ matrix.rid }}）
+    name: appservice-layout / ${{ matrix.rid }}
     needs: build-test
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -84,7 +84,7 @@ jobs:
           & $dotnetHostPath --info
           ./scripts/appservice-smoke.ps1 -Platform '${{ matrix.rid }}' -DotnetPath $dotnetHostPath
   docker-image:
-    name: Docker イメージ
+    name: docker-image
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -95,7 +95,7 @@ jobs:
       - run: docker run --rm calendarstyle-ci help
 
   instructions:
-    name: 指示と参照の検査
+    name: instructions
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
