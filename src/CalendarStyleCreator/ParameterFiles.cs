@@ -54,8 +54,16 @@ public sealed class ParameterFiles
     public static ParameterFiles Load(string? folder)
     {
         var parameters = new ParameterFiles();
-        if (folder == null) return parameters;
-        if (!Directory.Exists(folder)) throw new UserError("Parameters folder was not found.");
+        if (folder == null)
+        {
+            return parameters;
+        }
+
+        if (!Directory.Exists(folder))
+        {
+            throw new UserError("Parameters folder was not found.");
+        }
+
         folder = Path.GetFullPath(folder);
         string Resolve(string value) => Path.IsPathRooted(value) ? value : Path.GetFullPath(Path.Combine(folder, value));
         foreach (var (name, keys, apply) in new (string, string[], Action<JsonProperty>)[]
@@ -66,16 +74,27 @@ public sealed class ParameterFiles
         })
         {
             var path = Path.Combine(folder, name);
-            if (!File.Exists(path)) continue;
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
             JsonDocument document;
             try { document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }); }
             catch (JsonException) { throw new UserError($"{name} is not valid JSON."); }
             using (document)
             {
-                if (document.RootElement.ValueKind != JsonValueKind.Object) throw new UserError($"{name} root must be an object.");
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    throw new UserError($"{name} root must be an object.");
+                }
+
                 CheckKeys(document.RootElement, keys, name);
                 // null は「未指定」（Pleasanter のパラメーターと同じく、既定の値を null で書いてよい）。
-                foreach (var property in document.RootElement.EnumerateObject().Where(p => p.Value.ValueKind != JsonValueKind.Null)) apply(property);
+                foreach (var property in document.RootElement.EnumerateObject().Where(p => p.Value.ValueKind != JsonValueKind.Null))
+                {
+                    apply(property);
+                }
             }
         }
         return parameters;
@@ -122,7 +141,12 @@ public sealed class ParameterFiles
     private static void CheckKeys(JsonElement element, string[] allowed, string where)
     {
         foreach (var property in element.EnumerateObject())
-            if (!allowed.Contains(property.Name)) throw new UserError($"{where} has an unknown key. Allowed: {string.Join(", ", allowed)}.");
+        {
+            if (!allowed.Contains(property.Name))
+            {
+                throw new UserError($"{where} has an unknown key. Allowed: {string.Join(", ", allowed)}.");
+            }
+        }
     }
 
     private static string Str(JsonElement value, string key) =>
@@ -136,13 +160,29 @@ public sealed class ParameterFiles
 
     private static IcalEndpoint Endpoint(JsonElement value)
     {
-        if (value.ValueKind == JsonValueKind.String) return Checked(new IcalEndpoint(Str(value, "IcalUrls")));
-        if (value.ValueKind != JsonValueKind.Object) throw new UserError("IcalUrls items must be a URL string or an object.");
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return Checked(new IcalEndpoint(Str(value, "IcalUrls")));
+        }
+
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            throw new UserError("IcalUrls items must be a URL string or an object.");
+        }
+
         CheckKeys(value, IcalKeys, "IcalUrls item");
         string? Optional(string key) => value.TryGetProperty(key, out var v) && v.ValueKind != JsonValueKind.Null ? Str(v, key) : null;
         var endpoint = new IcalEndpoint(Optional("Url") ?? throw new UserError("IcalUrls item requires Url."), Optional("BearerTokenEnv"), Optional("BasicUserEnv"), Optional("BasicPasswordEnv"));
-        if (endpoint.BearerTokenEnv != null && endpoint.BasicUserEnv != null) throw new UserError("An iCal item can use BearerTokenEnv or BasicUserEnv, not both.");
-        if (endpoint.BasicPasswordEnv != null && endpoint.BasicUserEnv == null) throw new UserError("BasicPasswordEnv requires BasicUserEnv.");
+        if (endpoint.BearerTokenEnv != null && endpoint.BasicUserEnv != null)
+        {
+            throw new UserError("An iCal item can use BearerTokenEnv or BasicUserEnv, not both.");
+        }
+
+        if (endpoint.BasicPasswordEnv != null && endpoint.BasicUserEnv == null)
+        {
+            throw new UserError("BasicPasswordEnv requires BasicUserEnv.");
+        }
+
         return Checked(endpoint);
     }
 
@@ -150,7 +190,11 @@ public sealed class ParameterFiles
 
     private static CalendarTheme ReadTheme(JsonElement value)
     {
-        if (value.ValueKind != JsonValueKind.Object) throw new UserError("Colors must be an object.");
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            throw new UserError("Colors must be an object.");
+        }
+
         CheckKeys(value, ColorKeys, "Colors");
         var defaults = new CalendarTheme();
         string Pick(string key, string fallback) => value.TryGetProperty(key, out var v) && v.ValueKind != JsonValueKind.Null ? Str(v, key) : fallback;

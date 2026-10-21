@@ -71,16 +71,27 @@ public static class Program
     {
         var sources = new List<IHolidaySource>();
         foreach (var calendarId in options.CalendarIds)
+        {
             sources.Add(new GoogleCalendarHolidaySource(calendarId, fromYear, toYear));
+        }
+
         foreach (var endpoint in options.IcalUrls)
         {
             var auth = IcalAuth.FromEnvironment(Environment.GetEnvironmentVariable, endpoint);
             sources.Add(new IcalHolidaySource(endpoint.Url, auth.IsEmpty ? null : auth, fromYear, toYear));
         }
         // 同じ日付が複数の取得元にある場合は後勝ち（CSV で Google の名称や追加休日を上書きできる）。
-        foreach (var csv in options.CsvPaths) sources.Add(new CsvHolidaySource(csv));
+        foreach (var csv in options.CsvPaths)
+        {
+            sources.Add(new CsvHolidaySource(csv));
+        }
+
         var holidays = new List<Holiday>();
-        foreach (var source in sources) holidays.AddRange(await source.GetHolidaysAsync(cancel));
+        foreach (var source in sources)
+        {
+            holidays.AddRange(await source.GetHolidaysAsync(cancel));
+        }
+
         return holidays;
     }
 }

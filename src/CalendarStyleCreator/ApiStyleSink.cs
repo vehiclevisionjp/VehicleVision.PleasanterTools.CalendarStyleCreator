@@ -19,20 +19,31 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
 
     public static void ValidateBaseUrl(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) throw new UserError("Pleasanter URL must be an absolute http or https URL.");
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+        {
+            throw new UserError("Pleasanter URL must be an absolute http or https URL.");
+        }
     }
 
     public async Task WriteAsync(StyleSet set, CancellationToken cancel)
     {
         ValidateBaseUrl(baseUrl);
-        if (new Uri(baseUrl).Scheme == Uri.UriSchemeHttp) RuntimeLog.WriteLine("WARNING: The API key is sent over http. Use https unless the network is trusted.");
+        if (new Uri(baseUrl).Scheme == Uri.UriSchemeHttp)
+        {
+            RuntimeLog.WriteLine("WARNING: The API key is sent over http. Use https unless the network is trusted.");
+        }
+
         using var owned = client == null ? new HttpClient { Timeout = TimeSpan.FromSeconds(30) } : null;
         var http = client ?? owned!;
         var existing = await ListAsync(http, cancel);
         foreach (var style in set.Styles)
         {
             var matches = existing.Where(e => e.Name == style.Name).ToList();
-            if (matches.Count > 1) throw new UserError($"Multiple extended styles named '{style.Name}' exist. Remove the duplicates first.");
+            if (matches.Count > 1)
+            {
+                throw new UserError($"Multiple extended styles named '{style.Name}' exist. Remove the duplicates first.");
+            }
+
             var body = BuildBody(style);
             if (matches.Count == 0)
             {
@@ -67,7 +78,11 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
     private JsonObject Envelope()
     {
         var body = new JsonObject { ["ApiVersion"] = ApiVersion, ["ApiKey"] = apiKey };
-        if (tenantId != null) body["TenantId"] = tenantId;
+        if (tenantId != null)
+        {
+            body["TenantId"] = tenantId;
+        }
+
         return body;
     }
 
@@ -75,7 +90,11 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
     {
         // SiteIdList を省略すると全サイトに適用される（ファイル配置と同じ）。
         var settings = new JsonObject { ["Name"] = style.Name, ["Description"] = style.Description };
-        if (style.SiteIds.Count > 0) settings["SiteIdList"] = new JsonArray(style.SiteIds.Select(id => (JsonNode)JsonValue.Create(id)).ToArray());
+        if (style.SiteIds.Count > 0)
+        {
+            settings["SiteIdList"] = new JsonArray(style.SiteIds.Select(id => (JsonNode)JsonValue.Create(id)).ToArray());
+        }
+
         var body = Envelope();
         body["ExtensionType"] = ExtensionType;
         body["ExtensionName"] = style.Name;
@@ -110,9 +129,21 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
             try { json = JsonNode.Parse(text) as JsonObject; } catch (JsonException) { }
             // 成功は HTTP と本文の StatusCode の両方が 200。本文のエラー詳細は秘密を含まないが、長いので状態だけを出す。
             var status = (int?)json?["StatusCode"] ?? (int)response.StatusCode;
-            if (status == 403) throw new UserError("Pleasanter returned 403. Enable AllowExtensionsApi for the tenant and use an API key of a user who can manage extensions.");
-            if (status == 401) throw new UserError("Pleasanter returned 401. Check the API key.");
-            if (!response.IsSuccessStatusCode || status != 200) throw new UserError($"The Extensions API returned status {status}{(((string?)json?["Message"]) is { Length: > 0 and < 200 } message ? ": " + message : "")}.");
+            if (status == 403)
+            {
+                throw new UserError("Pleasanter returned 403. Enable AllowExtensionsApi for the tenant and use an API key of a user who can manage extensions.");
+            }
+
+            if (status == 401)
+            {
+                throw new UserError("Pleasanter returned 401. Check the API key.");
+            }
+
+            if (!response.IsSuccessStatusCode || status != 200)
+            {
+                throw new UserError($"The Extensions API returned status {status}{(((string?)json?["Message"]) is { Length: > 0 and < 200 } message ? ": " + message : "")}.");
+            }
+
             return json;
         }
     }
@@ -132,7 +163,13 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
         {
             var result = new JsonObject();
             foreach (var (key, value) in source.OrderBy(p => p.Key, StringComparer.Ordinal))
-                if (value is not null && !(value is JsonArray { Count: 0 })) result[key] = value.DeepClone();
+            {
+                if (value is not null && !(value is JsonArray { Count: 0 }))
+                {
+                    result[key] = value.DeepClone();
+                }
+            }
+
             return result;
         }
     }

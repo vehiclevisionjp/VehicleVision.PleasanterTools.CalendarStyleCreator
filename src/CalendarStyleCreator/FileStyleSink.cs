@@ -12,8 +12,15 @@ public sealed class FileStyleSink(string directory) : IStyleSink
     {
         foreach (var style in set.Styles)
         {
-            if (style.Name.Length == 0 || style.Name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new UserError("Style name is not a valid file name.");
-            if (style.SiteIds.Count > 0) throw new UserError("File placement applies to all sites. Use register to limit the style to specific sites.");
+            if (style.Name.Length == 0 || style.Name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                throw new UserError("Style name is not a valid file name.");
+            }
+
+            if (style.SiteIds.Count > 0)
+            {
+                throw new UserError("File placement applies to all sites. Use register to limit the style to specific sites.");
+            }
         }
         Directory.CreateDirectory(directory);
         foreach (var style in set.Styles)
@@ -30,7 +37,10 @@ public sealed class FileStyleSink(string directory) : IStyleSink
                 File.Delete(Path.Combine(directory, name + ".css"));
                 RuntimeLog.WriteLine($"Deleted obsolete style '{name}'.");
             }
-            else RuntimeLog.WriteLine($"WARNING: Obsolete style '{name}' remains. Use /prune to delete styles that start with the prefix and are no longer generated.");
+            else
+            {
+                RuntimeLog.WriteLine($"WARNING: Obsolete style '{name}' remains. Use /prune to delete styles that start with the prefix and are no longer generated.");
+            }
         }
     }
 }

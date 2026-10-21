@@ -12,7 +12,13 @@ public sealed record CalendarTheme(string HolidayBackground = "#fff0f3", string 
     public CalendarTheme Validate()
     {
         foreach (var color in new[] { HolidayBackground, SaturdayBackground, HolidayText, SaturdayText, WeekdayBackground, WeekdayText })
-            if (!ColorPattern.IsMatch(color)) throw new UserError("Color must be like #fff0f3 or a color name.");
+        {
+            if (!ColorPattern.IsMatch(color))
+            {
+                throw new UserError("Color must be like #fff0f3 or a color name.");
+            }
+        }
+
         return this;
     }
 }
@@ -50,11 +56,18 @@ public static class CssGenerator
     public static GeneratedStyles Generate(IEnumerable<Holiday> holidays, CalendarTheme theme, int fromYear, int toYear, int firstDayOfWeek = DefaultFirstDayOfWeek)
     {
         theme.Validate();
-        if (firstDayOfWeek is < 0 or > 6) throw new UserError("First day of week must be 0 (Sunday) to 6 (Saturday).");
+        if (firstDayOfWeek is < 0 or > 6)
+        {
+            throw new UserError("First day of week must be 0 (Sunday) to 6 (Saturday).");
+        }
+
         var resolved = DayResolver.Resolve(holidays);
         var years = new SortedDictionary<int, string>();
         for (var year = fromYear; year <= toYear; year++)
+        {
             years[year] = Year(year, resolved.Where(h => h.Key.Year == year).ToDictionary(h => h.Key, h => h.Value), theme);
+        }
+
         return new GeneratedStyles(Core(theme, firstDayOfWeek), years);
     }
 
@@ -90,7 +103,10 @@ public static class CssGenerator
         void Rule(IEnumerable<string> selectors, string declarations)
         {
             var list = selectors.ToList();
-            if (list.Count > 0) css.Append(string.Join(",\n", list)).Append(" { ").Append(declarations).Append(" }\n");
+            if (list.Count > 0)
+            {
+                css.Append(string.Join(",\n", list)).Append(" { ").Append(declarations).Append(" }\n");
+            }
         }
         // 日付ごとの色は日祝・土・平日の 3 種類。1 日には最も優先順位の高い種類だけが残っている（DayResolver）。
         // 土日の色（Core）は構造の条件に :where() を使い詳細度が低いので、読み込み順に依らず日付ごとの指定が勝つ。
@@ -98,7 +114,11 @@ public static class CssGenerator
         foreach (var type in new[] { DayType.Holiday, DayType.Saturday, DayType.Weekday })
         {
             var dates = days.Values.Where(d => d.Type == type).Select(d => d.Date).OrderBy(d => d).ToList();
-            if (dates.Count == 0) continue;
+            if (dates.Count == 0)
+            {
+                continue;
+            }
+
             var (background, text) = Colors(type, theme);
             Rule([MonthlyOrWeeklyIs(dates)], $"background-color: {background};");
             Rule([MonthlyIs(dates) + " .day"], $"color: {text};");
@@ -119,14 +139,28 @@ public static class CssGenerator
         for (var day = new DateOnly(year, 1, 1); day.Year == year; day = day.AddDays(1))
         {
             // 平日は「打ち消す」色（透明）にすると日の見出しの地の色が出てしまうため、リストでは何も付けず本体の既定のままにする。
-            if (days.TryGetValue(day, out var entry)) { if (entry.Type != DayType.Weekday) listTypes[day] = entry.Type; }
-            else if (day.DayOfWeek == DayOfWeek.Saturday) listTypes[day] = DayType.Saturday;
-            else if (day.DayOfWeek == DayOfWeek.Sunday) listTypes[day] = DayType.Holiday;
+            if (days.TryGetValue(day, out var entry)) { if (entry.Type != DayType.Weekday)
+                {
+                    listTypes[day] = entry.Type;
+                }
+            }
+            else if (day.DayOfWeek == DayOfWeek.Saturday)
+            {
+                listTypes[day] = DayType.Saturday;
+            }
+            else if (day.DayOfWeek == DayOfWeek.Sunday)
+            {
+                listTypes[day] = DayType.Holiday;
+            }
         }
         foreach (var type in new[] { DayType.Holiday, DayType.Saturday, DayType.Weekday })
         {
             var dates = listTypes.Where(p => p.Value == type).Select(p => p.Key).OrderBy(d => d).ToList();
-            if (dates.Count == 0) continue;
+            if (dates.Count == 0)
+            {
+                continue;
+            }
+
             var (background, text) = Colors(type, theme);
             Rule([$"{Full} tr.fc-list-day{FullIs(dates)} .fc-list-day-cushion"], $"background-color: {background};");
             Rule([$"{Full} tr.fc-list-day{FullIs(dates)} :is(.fc-list-day-text, .fc-list-day-side-text)"], $"color: {text};");
@@ -177,10 +211,22 @@ public static class CssGenerator
         var escaped = new StringBuilder();
         foreach (var c in value)
         {
-            if (c is '"' or '\\') escaped.Append('\\').Append(c);
-            else if (c is '<' or '>' or '&') escaped.Append('\\').Append(((int)c).ToString("x", CultureInfo.InvariantCulture)).Append(' ');
-            else if (char.IsControl(c)) escaped.Append(' ');
-            else escaped.Append(c);
+            if (c is '"' or '\\')
+            {
+                escaped.Append('\\').Append(c);
+            }
+            else if (c is '<' or '>' or '&')
+            {
+                escaped.Append('\\').Append(((int)c).ToString("x", CultureInfo.InvariantCulture)).Append(' ');
+            }
+            else if (char.IsControl(c))
+            {
+                escaped.Append(' ');
+            }
+            else
+            {
+                escaped.Append(c);
+            }
         }
         return escaped.ToString();
     }

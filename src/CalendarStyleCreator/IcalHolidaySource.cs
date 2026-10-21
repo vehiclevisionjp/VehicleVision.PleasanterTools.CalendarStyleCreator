@@ -22,15 +22,31 @@ public sealed record IcalAuth(string? BearerToken = null, string? BasicUser = nu
         var passwordName = endpoint?.BasicPasswordEnv ?? (explicitNames ? null : Options.IcalBasicPasswordVariable);
         string? Read(string? name, bool required)
         {
-            if (name == null) return null;
+            if (name == null)
+            {
+                return null;
+            }
+
             var value = get(name);
-            if (string.IsNullOrEmpty(value) && required) throw new UserError($"Environment variable {name} is not set.");
+            if (string.IsNullOrEmpty(value) && required)
+            {
+                throw new UserError($"Environment variable {name} is not set.");
+            }
+
             return string.IsNullOrEmpty(value) ? null : value;
         }
         var token = Read(tokenName, explicitNames);
         var user = Read(userName, explicitNames);
-        if (token != null && user != null) throw new UserError($"Set either {tokenName} or {userName}, not both.");
-        if (user != null) return new(BasicUser: user, BasicPassword: Read(passwordName, false) ?? "");
+        if (token != null && user != null)
+        {
+            throw new UserError($"Set either {tokenName} or {userName}, not both.");
+        }
+
+        if (user != null)
+        {
+            return new(BasicUser: user, BasicPassword: Read(passwordName, false) ?? "");
+        }
+
         return new(BearerToken: token);
     }
 
@@ -50,7 +66,10 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
     public static void ValidateUrl(string url)
     {
         // https のみ。ループバック（検証用の手元のサーバー）だけ http を許可する。
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback))) throw new UserError("iCal URL must be an absolute https URL (http is allowed only for localhost).");
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+        {
+            throw new UserError("iCal URL must be an absolute https URL (http is allowed only for localhost).");
+        }
     }
 
     public async Task<IReadOnlyList<Holiday>> GetHolidaysAsync(CancellationToken cancel)
@@ -64,9 +83,21 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
         catch (HttpRequestException) { throw new UserError("Could not connect to the iCal URL."); }
         using (response)
         {
-            if ((int)response.StatusCode is >= 300 and < 400 && header != null) throw new UserError("The iCal URL redirected; credentials are not sent to redirects. Use the final URL.");
-            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden) throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}. Check the credentials for this URL (environment variables, see help).");
-            if (!response.IsSuccessStatusCode) throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}.");
+            if ((int)response.StatusCode is >= 300 and < 400 && header != null)
+            {
+                throw new UserError("The iCal URL redirected; credentials are not sent to redirects. Use the final URL.");
+            }
+
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            {
+                throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}. Check the credentials for this URL (environment variables, see help).");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new UserError($"The iCal URL returned HTTP {(int)response.StatusCode}.");
+            }
+
             return Parse(await response.Content.ReadAsStringAsync(cancel), fromYear, toYear);
         }
     }
@@ -78,11 +109,23 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
         foreach (Match block in Regex.Matches(unfolded, @"BEGIN:VEVENT\r?\n(.*?)END:VEVENT", RegexOptions.Singleline))
         {
             var body = block.Groups[1].Value;
-            if (Property(body, "STATUS").Equals("CANCELLED", StringComparison.OrdinalIgnoreCase)) continue;
+            if (Property(body, "STATUS").Equals("CANCELLED", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var start = Regex.Match(Property(body, "DTSTART"), @"^(\d{4})(\d{2})(\d{2})");
-            if (!start.Success) continue;
+            if (!start.Success)
+            {
+                continue;
+            }
+
             var date = new DateOnly(int.Parse(start.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[3].Value, CultureInfo.InvariantCulture));
-            if (date.Year < fromYear || date.Year > toYear) continue;
+            if (date.Year < fromYear || date.Year > toYear)
+            {
+                continue;
+            }
+
             holidays.Add(new Holiday(date, Unescape(Property(body, "SUMMARY"))));
         }
         return holidays;
