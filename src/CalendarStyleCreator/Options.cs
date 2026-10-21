@@ -20,27 +20,53 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
     /// <summary>優先順位は コマンドライン &gt; パラメーターファイル（App_Data/Parameters、/parameters で変更）&gt; 既定値。</summary>
     public static Options Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is "help" or "/?") return new("help", [], [], [], null, null, DefaultPrefix, false, CssGenerator.DefaultFirstDayOfWeek, [], null, null, null, new());
+        if (args.Length == 0 || args[0] is "help" or "/?")
+        {
+            return new("help", [], [], [], null, null, DefaultPrefix, false, CssGenerator.DefaultFirstDayOfWeek, [], null, null, null, new());
+        }
+
         var action = args[0];
-        if (action is not ("generate" or "register")) throw new UserError("Unknown action. Use generate or register.");
+        if (action is not ("generate" or "register"))
+        {
+            throw new UserError("Unknown action. Use generate or register.");
+        }
+
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var flags = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 1; i < args.Length; i++)
         {
-            if (args[i].Length < 2 || args[i][0] != '/') throw new UserError("Options start with /. Use help for usage.");
+            if (args[i].Length < 2 || args[i][0] != '/')
+            {
+                throw new UserError("Options start with /. Use help for usage.");
+            }
+
             var name = args[i][1..];
-            if (FlagOptions.Contains(name)) { if (!flags.Add(name)) throw new UserError("Duplicate option."); continue; }
-            if (!ValueOptions.Contains(name)) throw new UserError("Unknown option. Use help for usage.");
+            if (FlagOptions.Contains(name)) { if (!flags.Add(name)) { throw new UserError("Duplicate option."); } continue; }
+            if (!ValueOptions.Contains(name))
+            {
+                throw new UserError("Unknown option. Use help for usage.");
+            }
             // 値は次の引数。パス（config / csv / output）は / で始まる値（Linux の絶対パス）も許す。
-            if (++i >= args.Length || (!PathOptions.Contains(name) && args[i].StartsWith('/')) || !values.TryAdd(name, args[i])) throw new UserError("Missing or duplicate option value.");
+            if (++i >= args.Length || (!PathOptions.Contains(name) && args[i].StartsWith('/')) || !values.TryAdd(name, args[i]))
+            {
+                throw new UserError("Missing or duplicate option value.");
+            }
         }
         string? V(string key) => values.GetValueOrDefault(key);
         // パラメーターは Pleasanter 本体と同じく App_Data/Parameters に置く（このツールのフォルダ内が既定、/parameters で変更）。
         var config = ParameterFiles.Load(V("parameters") ?? ParameterFiles.DefaultFolder());
         int? Year(string key, int? fromConfig)
         {
-            if (V(key) == null) return fromConfig;
-            if (!int.TryParse(V(key), NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1900 or > 2100) throw new UserError("Year option out of range.");
+            if (V(key) == null)
+            {
+                return fromConfig;
+            }
+
+            if (!int.TryParse(V(key), NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1900 or > 2100)
+            {
+                throw new UserError("Year option out of range.");
+            }
+
             return year;
         }
         List<string> List(string? text) => (text ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.Ordinal).ToList();
@@ -60,25 +86,64 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
         var firstDay = CssGenerator.DefaultFirstDayOfWeek;
         if (V("first-day-of-week") != null)
         {
-            if (!int.TryParse(V("first-day-of-week"), NumberStyles.None, CultureInfo.InvariantCulture, out firstDay) || firstDay > 6) throw new UserError("First day of week must be 0 (Sunday) to 6 (Saturday).");
+            if (!int.TryParse(V("first-day-of-week"), NumberStyles.None, CultureInfo.InvariantCulture, out firstDay) || firstDay > 6)
+            {
+                throw new UserError("First day of week must be 0 (Sunday) to 6 (Saturday).");
+            }
         }
-        else firstDay = config.FirstDayOfWeek ?? firstDay;
+        else
+        {
+            firstDay = config.FirstDayOfWeek ?? firstDay;
+        }
+
         int? tenant = null;
         if (V("tenant-id") != null)
         {
-            if (!int.TryParse(V("tenant-id"), NumberStyles.None, CultureInfo.InvariantCulture, out var t) || t < 1) throw new UserError("Tenant ID must be a positive number.");
+            if (!int.TryParse(V("tenant-id"), NumberStyles.None, CultureInfo.InvariantCulture, out var t) || t < 1)
+            {
+                throw new UserError("Tenant ID must be a positive number.");
+            }
+
             tenant = t;
         }
         tenant ??= config.TenantId;
         var output = V("output") ?? config.Output ?? (action == "generate" ? FindExtendedStylesFolder(V("p") ?? config.PleasanterPath) : null);
         var options = new Options(action, csv, calendars, icalUrls, Year("from", config.From), Year("to", config.To), ValidatePrefix(V("prefix") ?? config.Prefix ?? DefaultPrefix), flags.Contains("prune") || config.Prune == true, firstDay, sites, tenant, output, V("url") ?? config.PleasanterUrl, theme);
-        if (options.CsvPaths.Count == 0 && options.CalendarIds.Count == 0 && options.IcalUrls.Count == 0) throw new UserError("Specify /calendar-id, /ical-url, /csv or the Holidays parameters.");
-        if (options.FromYear > options.ToYear) throw new UserError("/from must not be later than /to.");
-        if (action == "generate" && options.Output == null) throw new UserError("generate requires /output, /p (or OutputPath / PleasanterPath in Placement.json), or an Implem.Pleasanter folder beside this tool.");
-        if (action == "register" && options.PleasanterUrl == null) throw new UserError("register requires /url (or Url in Placement.json).");
-        if (action == "generate" && options.SiteIds.Count > 0) throw new UserError("generate (file placement) applies to all sites. Use register to limit the style to specific sites.");
-        if (action == "generate" && options.TenantId != null) throw new UserError("/tenant-id applies to register only.");
-        if (action == "register") ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);
+        if (options.CsvPaths.Count == 0 && options.CalendarIds.Count == 0 && options.IcalUrls.Count == 0)
+        {
+            throw new UserError("Specify /calendar-id, /ical-url, /csv or the Holidays parameters.");
+        }
+
+        if (options.FromYear > options.ToYear)
+        {
+            throw new UserError("/from must not be later than /to.");
+        }
+
+        if (action == "generate" && options.Output == null)
+        {
+            throw new UserError("generate requires /output, /p (or OutputPath / PleasanterPath in Placement.json), or an Implem.Pleasanter folder beside this tool.");
+        }
+
+        if (action == "register" && options.PleasanterUrl == null)
+        {
+            throw new UserError("register requires /url (or Url in Placement.json).");
+        }
+
+        if (action == "generate" && options.SiteIds.Count > 0)
+        {
+            throw new UserError("generate (file placement) applies to all sites. Use register to limit the style to specific sites.");
+        }
+
+        if (action == "generate" && options.TenantId != null)
+        {
+            throw new UserError("/tenant-id applies to register only.");
+        }
+
+        if (action == "register")
+        {
+            ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);
+        }
+
         return options;
     }
 
@@ -90,7 +155,10 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
     {
         static string? Styles(string folder) => Directory.Exists(Path.Combine(folder, "App_Data")) ? Path.Combine(folder, "App_Data", "Parameters", "ExtendedStyles") : null;
         if (pleasanterPath != null)
+        {
             return Styles(pleasanterPath) ?? Styles(Path.Combine(pleasanterPath, "Implem.Pleasanter")) ?? throw new UserError("/p must be the Pleasanter folder that contains App_Data.");
+        }
+
         return Styles(Path.GetFullPath(Path.Combine(toolFolder ?? AppContext.BaseDirectory, "..", "Implem.Pleasanter")));
     }
 

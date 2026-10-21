@@ -15,7 +15,11 @@ public sealed class CsvHolidaySource(string path) : IHolidaySource
 
     public async Task<IReadOnlyList<Holiday>> GetHolidaysAsync(CancellationToken cancel)
     {
-        if (!File.Exists(path)) throw new UserError("CSV file was not found.");
+        if (!File.Exists(path))
+        {
+            throw new UserError("CSV file was not found.");
+        }
+
         return Parse(Decode(await File.ReadAllBytesAsync(path, cancel)));
     }
 
@@ -37,13 +41,29 @@ public sealed class CsvHolidaySource(string path) : IHolidaySource
         {
             lineNumber++;
             var row = line.TrimEnd('\r');
-            if (lineNumber == 1) row = row.TrimStart('﻿');
-            if (string.IsNullOrWhiteSpace(row) || row.TrimStart().StartsWith('#')) continue;
+            if (lineNumber == 1)
+            {
+                row = row.TrimStart('﻿');
+            }
+
+            if (string.IsNullOrWhiteSpace(row) || row.TrimStart().StartsWith('#'))
+            {
+                continue;
+            }
+
             var fields = SplitFields(row, lineNumber);
-            if (fields.Count < 2) throw new UserError($"CSV line {lineNumber}: expected 'date,name'.");
+            if (fields.Count < 2)
+            {
+                throw new UserError($"CSV line {lineNumber}: expected 'date,name'.");
+            }
+
             if (!DateOnly.TryParseExact(fields[0].Trim(), DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
-                if (holidays.Count == 0 && lineNumber == 1) continue; // ヘッダー行
+                if (holidays.Count == 0 && lineNumber == 1)
+                {
+                    continue; // ヘッダー行
+                }
+
                 throw new UserError($"CSV line {lineNumber}: invalid date.");
             }
             holidays.Add(new Holiday(date, fields[1].Trim(), fields.Count > 2 && fields[2].Trim().Length > 0 ? ParseType(fields[2].Trim(), lineNumber) : DayType.Holiday));
@@ -69,15 +89,31 @@ public sealed class CsvHolidaySource(string path) : IHolidaySource
             var c = row[i];
             if (quoted)
             {
-                if (c != '"') current.Append(c);
+                if (c != '"')
+                {
+                    current.Append(c);
+                }
                 else if (i + 1 < row.Length && row[i + 1] == '"') { current.Append('"'); i++; }
-                else quoted = false;
+                else
+                {
+                    quoted = false;
+                }
             }
-            else if (c == '"' && current.Length == 0) quoted = true;
+            else if (c == '"' && current.Length == 0)
+            {
+                quoted = true;
+            }
             else if (c == ',') { fields.Add(current.ToString()); current.Clear(); }
-            else current.Append(c);
+            else
+            {
+                current.Append(c);
+            }
         }
-        if (quoted) throw new UserError($"CSV line {lineNumber}: unterminated quote.");
+        if (quoted)
+        {
+            throw new UserError($"CSV line {lineNumber}: unterminated quote.");
+        }
+
         fields.Add(current.ToString());
         return fields;
     }

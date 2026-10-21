@@ -3,7 +3,11 @@ using VehicleVision.PleasanterTools.CalendarStyleCreator;
 var passed = 0;
 void Check(bool condition, string name)
 {
-    if (!condition) throw new Exception("FAIL: " + name);
+    if (!condition)
+    {
+        throw new Exception("FAIL: " + name);
+    }
+
     passed++;
 }
 void Reject(Action action, string name)
@@ -189,7 +193,10 @@ Check(set.Obsolete(["vvcsc_2025", "vvcsc_2026", "vvcsc_core", "other_2024", "vvc
 Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).Prefix == "vvcsc_" && !Options.Parse(["generate", "/csv", "h.csv", "/output", "o"]).Prune, "Default prefix, no prune");
 Check(Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/prefix", "Co-1_", "/prune"]).Prune, "/prune flag");
 foreach (var badPrefix in new[] { "", "_x", "a b", "a/b", "../x", new string('a', 33) })
+{
     Reject(() => Options.ValidatePrefix(badPrefix), "Bad prefix is rejected: " + badPrefix);
+}
+
 Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/tenant-id", "1"]), "/tenant-id applies to register only");
 Check(Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.local", "/tenant-id", "3"]).TenantId == 3, "register accepts http and a tenant ID");
 
@@ -243,7 +250,11 @@ try
     Reject(() => new FileStyleSink(temp).WriteAsync(StyleSet.Create("vvcsc_", generated, [5], false), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects a site limit");
     Reject(() => new FileStyleSink(temp).WriteAsync(new("p", [new("../x", "d", [], "x")], false), CancellationToken.None).GetAwaiter().GetResult(), "File sink rejects path in name");
 }
-finally { if (Directory.Exists(temp)) Directory.Delete(temp, true); }
+finally { if (Directory.Exists(temp))
+    {
+        Directory.Delete(temp, true);
+    }
+}
 
 Console.WriteLine($"{passed} checks passed.");
 
@@ -254,7 +265,11 @@ sealed class FakeIcalHandler : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
     {
         LastAuthorization = request.Headers.Authorization?.ToString();
-        if (LastAuthorization == null) return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));
+        if (LastAuthorization == null)
+        {
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));
+        }
+
         return Task.FromResult(new HttpResponseMessage { Content = new StringContent("BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20260101\r\nSUMMARY:x\r\nEND:VEVENT\r\n") });
     }
 }
@@ -273,12 +288,24 @@ sealed class FakePleasanter : HttpMessageHandler
         var path = request.RequestUri!.AbsolutePath;
         var body = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(await request.Content!.ReadAsStringAsync(cancel))!;
         static HttpResponseMessage Json(string json) => new() { Content = new StringContent(json) };
-        if (Mode == "forbidden") return Json("""{"StatusCode":403,"Message":"Forbidden"}""");
+        if (Mode == "forbidden")
+        {
+            return Json("""{"StatusCode":403,"Message":"Forbidden"}""");
+        }
+
         if (path.EndsWith("/get"))
         {
             var items = new System.Text.Json.Nodes.JsonArray();
-            foreach (var (id, item) in Items) items.Add(Item(id, item));
-            if (Mode == "duplicate" && Items.Count > 0) items.Add(Item(999, Items.Values.First()));
+            foreach (var (id, item) in Items)
+            {
+                items.Add(Item(id, item));
+            }
+
+            if (Mode == "duplicate" && Items.Count > 0)
+            {
+                items.Add(Item(999, Items.Values.First()));
+            }
+
             return Json(new System.Text.Json.Nodes.JsonObject { ["StatusCode"] = 200, ["Response"] = new System.Text.Json.Nodes.JsonObject { ["Data"] = items } }.ToJsonString());
         }
         if (path.EndsWith("/create")) { Created++; Items[nextId++] = body; return Json("""{"Id":1,"StatusCode":200,"Message":"ok"}"""); }
