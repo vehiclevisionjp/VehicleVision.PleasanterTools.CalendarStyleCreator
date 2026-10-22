@@ -34,7 +34,7 @@ CLA は将来の商用提供を含むライセンス選択の余地を残すた�
 
 「本ソフトウェア」とは VehicleVision.PleasanterTools.CalendarStyleCreator を、
 「貢献」とはあなたが本ソフトウェアへ提出する著作物（コード・文書・図・設定を含む）を指します。
-「当社」とは株式会社ビークルビジョンを指します。
+「当社」とは株式会社ピー・エム・シー ITソリューション事業部を指します。
 
 ### 1.1 著作権の許諾
 
@@ -94,6 +94,8 @@ CLA は将来の商用提供を含むライセンス選択の余地を残すた�
 [CONTRIBUTING.md](CONTRIBUTING.md) の「CLA へ署名する」を参照してください。
 
 参照元: [Template の CLA][template-cla]（2026-10-22 参照）。
-対象ソフトウェア名と冒頭の説明をこのリポジトリに合わせ、許諾条項は変更していません。
+対象ソフトウェア名と冒頭の説明をこのリポジトリに合わせています。
+許諾先は株式会社ピー・エム・シー ITソリューション事業部に統一しました（ユーザーの指示 2026-10-22）。
+許諾先以外の許諾条項は変更していません。
 
 [template-cla]: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Template/blob/60ad8ae/CLA.md
