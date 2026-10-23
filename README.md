@@ -133,6 +133,11 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 
 App Service への配置は [App Service への配置](_documents/AppService導入手順.md) を参照してください。
 
+## 貢献・ライセンス
+
+AGPL-3.0-or-later で提供しています（[ライセンスの説明](LICENSING.md)）。
+貢献を取り込む前に [CLA](CLA.md) への署名が必要です。手順は [貢献のしかた](CONTRIBUTING.md) を参照してください。
+
 ## 開発者向け
 
 [資料の案内](_documents/README.md) を参照してください。
