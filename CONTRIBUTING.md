@@ -10,7 +10,9 @@ Issue に変更の目的・制約を記録し、develop から作業ブランチ
 
 Release ビルド、単体チェック、`npm run lint:md` を実行し、結果と未検証の範囲を PR に書いてください。作業中は Draft と WIP:、本文には Closes #N。レビュー可能になったら Draft と WIP: を外します。master はリリース確定用です。
 
-本体参照ソースはサブモジュールに固定し、配布物へ含めません。Google の API キー・Pleasanter の API キー・実運用サイトの設定データをコミットしないでください。
+本体参照ソースは Git で追跡せず、[必要時に取得](_reference/README.md)し、配布物へ含めません。
+確認した完全な SHA・ソースへの固定リンク・参照日を記録してください。
+Google の API キー・Pleasanter の API キー・実運用サイトの設定データをコミットしないでください。
 
 共有メモリは Internal の `.ClaudeMemory` リポジトリに置き、正式な仕様と規約は本体の資料へ残します。
 
