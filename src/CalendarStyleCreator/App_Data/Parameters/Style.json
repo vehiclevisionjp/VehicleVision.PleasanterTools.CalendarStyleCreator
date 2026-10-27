@@ -1,0 +1,12 @@
+{
+    "Prefix": "vvcsc_",
+    "FirstDayOfWeek": 1,
+    "Colors": {
+        "HolidayBackground": "#fff0f3",
+        "SaturdayBackground": "#e8f3ff",
+        "HolidayText": "#b00020",
+        "SaturdayText": "#1565c0",
+        "WeekdayBackground": "transparent",
+        "WeekdayText": "inherit"
+    }
+}

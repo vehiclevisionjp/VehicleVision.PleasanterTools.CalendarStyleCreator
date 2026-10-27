@@ -5,4 +5,8 @@
     <RootNamespace>VehicleVision.PleasanterTools.CalendarStyleCreator</RootNamespace>
     <RuntimeIdentifiers>win-x86;win-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- 既定のパラメーター（Pleasanter 本体の App_Data/Parameters と同じ構成）。ビルド・発行の出力へそのまま置く。 -->
+    <Content Include="App_Data/Parameters/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
