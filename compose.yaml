@@ -36,7 +36,7 @@ services:
     restart: 'no'
 
   pleasanter:
-    # 参照ソース（_reference/Implem.Pleasanter、Pleasanter_1.5.8.1）に合わせる。
+    # 過去の実機検証版を維持する。必要時に取得する参照ソースの最新 main とは区別する。
     image: implem/pleasanter:1.5.8.1
     container_name: calendarstyle-test-pleasanter
     depends_on:

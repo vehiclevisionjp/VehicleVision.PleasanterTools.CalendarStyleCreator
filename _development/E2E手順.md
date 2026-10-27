@@ -81,7 +81,12 @@
 
 ## 本体の画面が変わったとき
 
-`lib.mjs` は本体の要素 ID（`#NewMenuContainer`、`#OpenSiteTitleDialog`、`#CreateByTemplate`、`#CalendarType`、`#CreateCommand` など）に、`verify.mjs` は `#CalendarBody`・`#CalendarTimePeriod`・`$p.moveCalendar`・`.fc-*-button` に依存する。固定参照コミットを更新して失敗した場合は、該当箇所を本体の画面に合わせて直す。`seed.mjs` の日付は 2026-10 を前提にしている（今日が 2026-10-16 の実行を想定）。
+`lib.mjs` は本体の要素 ID（`#NewMenuContainer`、`#OpenSiteTitleDialog`、`#CreateByTemplate`、`#CalendarType`、
+`#CreateCommand` など）に、`verify.mjs` は `#CalendarBody`・`#CalendarTimePeriod`・`$p.moveCalendar`・
+`.fc-*-button` に依存する。本体の実機版を変えて失敗した場合は、該当箇所を本体の画面に合わせて直す。
+ソースを調べる前は `bash scripts/sync-reference.sh` で同期し、完全な SHA・固定リンク・参照日を記録する。
+取得先の最新 `main` と、実機のイメージの版は区別する。
+`seed.mjs` の日付は 2026-10 を前提にしている（今日が 2026-10-16 の実行を想定）。
 
 ## 検証の「今日」
 
