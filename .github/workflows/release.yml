@@ -9,6 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: VersionPrefix とタグが一致することを確認する
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        # 配布 ZIP の名前は VersionPrefix で決まる。タグとずれたまま公開しない
+        run: |
+          set -euo pipefail
+          prefix="$(sed -nE 's@.*<VersionPrefix>([^<]+)</VersionPrefix>.*@\1@p' Directory.Build.props | head -n 1)"
+          if [ -z "$prefix" ]; then
+              echo "NG: Directory.Build.props から VersionPrefix を読み取れない" >&2
+              exit 1
+          fi
+          if [ "$RELEASE_TAG" != "v$prefix" ]; then
+              echo "NG: VersionPrefix ($prefix) とタグ ($RELEASE_TAG) が一致しない" >&2
+              echo "    Directory.Build.props の VersionPrefix を上げる PR を先に通すこと" >&2
+              exit 1
+          fi
+          echo "OK   VersionPrefix: $prefix"
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
