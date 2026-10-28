@@ -5,7 +5,7 @@ if (-not $version) { throw 'VersionPrefix is not defined in Directory.Build.prop
 $folder = Join-Path $Output 'portable/CalendarStyleCreator'
 dotnet publish src/CalendarStyleCreator/CalendarStyleCreator.csproj -c Release --self-contained false --no-restore -p:DebugType=none -p:DebugSymbols=false -o $folder
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
-Copy-Item LICENSE, NOTICE -Destination $folder
+Copy-Item LICENSE, LICENSING.md, LICENSE-COMMERCIAL.md, NOTICE -Destination $folder
 if (Get-ChildItem -LiteralPath $folder -Recurse -Force | Where-Object { $_.Name -match '^(\.git($|modules$)|_reference$|Implem\.)' }) {
     throw 'Reference source or Git metadata leaked into distribution.'
 }
