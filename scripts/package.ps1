@@ -1,7 +1,7 @@
 param([string]$Output = 'artifacts/package')
 $ErrorActionPreference = 'Stop'
-$version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-if (-not $version) { throw 'Version is not defined in Directory.Build.props.' }
+$version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
+if (-not $version) { throw 'VersionPrefix is not defined in Directory.Build.props.' }
 $folder = Join-Path $Output 'portable/CalendarStyleCreator'
 dotnet publish src/CalendarStyleCreator/CalendarStyleCreator.csproj -c Release --self-contained false --no-restore -p:DebugType=none -p:DebugSymbols=false -o $folder
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
