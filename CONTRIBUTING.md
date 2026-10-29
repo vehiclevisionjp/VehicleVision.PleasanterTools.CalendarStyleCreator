@@ -1,8 +1,7 @@
 # 貢献する
 
-本リポジトリは現在、AGPL-3.0-or-later 単独で提供しています。
-CLA は将来の商用提供を含むライセンス選択の余地を残すための許諾であり、
-現在の提供条件を変えたり、利用者に商用ライセンスを提供したりするものではありません。
+本リポジトリは **AGPL-3.0-or-later と商用ライセンスのデュアルライセンス**で提供します（草案。法務の確認前）。
+CLA は、貢献を商用ライセンスでも提供できるようにするための許諾を確認します。
 
 開発前に [共通規約](.github/copilot-instructions.md) と [開発ガイド](_documents/開発ガイド.md) を読んでください。
 
@@ -19,7 +18,7 @@ Google の API キー・Pleasanter の API キー・実運用サイトの設定�
 ## CLA へ署名する
 
 **公開リポジトリへの貢献は、取り込む前に [CLA.md](CLA.md) への署名が要ります。**
-現在の提供ライセンスにかかわらず、将来の商用提供も含めて再許諾できる状態を保つためです。
+デュアルライセンスを保ち、商用提供も含めて再許諾できる状態を保つためです。
 CLA は草案なので、正式な運用の前に管理者が法務の確認を受けてください。
 
 1. [CLA.md](CLA.md) を読む
@@ -34,7 +33,7 @@ CLA は草案なので、正式な運用の前に管理者が法務の確認を�
 
 Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR は対象外です。
 管理者の確認手順と、必須化前の配置条件は [開発運用](_documents/開発運用.md) にあります。
-現在の提供条件は [ライセンスの説明](LICENSING.md) を参照してください。
+提供条件は [ライセンスの説明](LICENSING.md) を参照してください。
 
 [cla-issue]:
   https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator/issues/new?template=cla.yml

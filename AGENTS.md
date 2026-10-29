@@ -12,7 +12,9 @@
 コンソールを英語にする理由は、Azure の開発者コンソール（Kudu）のエンコーディング制約で日本語が文字化けするため。
 利用者向け資料にはこの実装上の理由を混ぜず、開発ガイドに記載する。
 
-.NET 10、AGPL-3.0-or-later。Pleasanter 本体は AI の事実確認専用で、Git では追跡しない。
+.NET 10、デュアルライセンス（AGPL-3.0-or-later ＋ 商用。草案。[LICENSING.md](LICENSING.md)）。
+Pleasanter 本体は AI の事実確認専用で、Git では追跡しない。取り込むと商用側を提供できなくなる。
+依存 OSS は寛容ライセンス（MIT / BSD 系 / Apache-2.0）に限定する（例外なし。LICENSING.md）。
 コードをコピー・流用・リンク・プロジェクト参照せず、ビルド・配布物にも含めない。
 事実確認の前に `bash scripts/sync-reference.sh` で上流 `main` の先頭へ更新する。
 既定先は `_reference/Implem.Pleasanter`。
