@@ -7,5 +7,5 @@ RUN dotnet publish src/CalendarStyleCreator/CalendarStyleCreator.csproj -c Relea
 FROM mcr.microsoft.com/dotnet/runtime:10.0
 WORKDIR /tools/CalendarStyleCreator
 COPY --from=build /app/ ./
-COPY LICENSE NOTICE ./
+COPY LICENSE LICENSING.md LICENSE-COMMERCIAL.md NOTICE ./
 ENTRYPOINT ["dotnet", "VehicleVision.PleasanterTools.CalendarStyleCreator.dll"]
