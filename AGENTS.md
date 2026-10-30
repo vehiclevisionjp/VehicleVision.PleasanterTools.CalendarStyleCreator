@@ -25,7 +25,7 @@ CI は参照ソースを取得・使用しない。詳細は [参照ソース](_
 Release ビルドと影響するテスト → push → Draft PR（WIP:、Closes #N）。
 
 正式な要件は `_documents/` に置く。共通規約はこのファイルが単一の参照元。AGENTS.md と CLAUDE.md から参照する。
-共有メモリは Internal の `VehicleVision.PleasanterTools.CalendarStyleCreator.ClaudeMemory` を使い、
+共有メモリは Internal の `VehicleVision.PleasanterTools.ClaudeMemory` の `CalendarStyleCreator/` フォルダを使い、
 資格情報は記録しない。
 
 README は利用者向けの製品説明と操作の入口。ビルド・テスト・CI・設計・エージェント・リリースは開発者向け資料へ分離する。
