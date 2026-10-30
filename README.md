@@ -144,7 +144,7 @@ App Service への配置は [App Service への配置](_documents/AppService導�
 
 公開済みの版（v0.1.0）は、受け取った時点の AGPL-3.0-or-later のままです。
 
-貢献を取り込む前に [CLA（草案）](CLA.md) への署名が必要です。手順は [貢献のしかた](CONTRIBUTING.md) を参照してください。
+貢献を取り込む前に [CLA](CLA.md) への署名が必要です。手順は [貢献のしかた](CONTRIBUTING.md) を参照してください。
 
 ## 開発者向け
 
