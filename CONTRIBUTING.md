@@ -20,19 +20,14 @@ Google の API キー・Pleasanter の API キー・実運用サイトの設定�
 **公開リポジトリへの貢献は、取り込む前に [CLA.md](CLA.md) への署名が要ります。**
 デュアルライセンスを保ち、商用提供も含めて再許諾できる状態を保つためです。
 
+### 手順
+
 1. [CLA.md](CLA.md) を読む
 2. [「CLA への署名」の Issue][cla-issue] を作り、同意する
 3. 管理者が同意と許諾権限を確認し、[.github/cla/signed.yml](.github/cla/signed.yml) へ追記する
 4. PR のチェック `cla` で確認する（必須化は導入 PR のマージ後に別途行う）
 
 **会社の業務として貢献する場合は、法人用の署名も要ります。** 勤務先の承認を先に取ってください。
-署名一覧は管理者が変更します。貢献者自身の PR で追記しても、その PR の判定には使いません。
-一覧の変更を対象 base ブランチへ取り込んだ後、PR を更新してチェックを再実行してください。
-未署名ならチェックが失敗し、案内コメントが付きます。
-
-Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR は対象外です。
-管理者の確認手順と、必須化前の配置条件は [開発運用](_documents/開発運用.md) にあります。
-提供条件は [ライセンスの説明](LICENSING.md) を参照してください。
 
 ### 法人として署名する場合
 
@@ -46,6 +41,16 @@ Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR �
 - 法人用の CLA（[CLA.md](CLA.md) の 2）に同意すること
 
 メールの内容は GitHub には載せません（社内で保管します）。確認でき次第、署名の一覧へ追記します。
+
+### 署名済みかどうかの確認
+
+署名一覧は管理者が変更します。貢献者自身の PR で追記しても、その PR の判定には使いません。
+一覧の変更を対象 base ブランチへ取り込んだ後、PR を更新してチェックを再実行してください。
+未署名ならチェックが失敗し、案内コメントが付きます。
+
+Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR は対象外です。
+管理者の確認手順と、必須化前の配置条件は [開発運用](_documents/開発運用.md) にあります。
+提供条件は [ライセンスの説明](LICENSING.md) を参照してください。
 
 [cla-issue]:
   https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator/issues/new?template=cla.yml
