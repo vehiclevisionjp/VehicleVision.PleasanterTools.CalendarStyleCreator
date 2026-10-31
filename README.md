@@ -140,7 +140,7 @@ App Service への配置は [App Service への配置](_documents/AppService導�
 | | ライセンス | 想定する利用 |
 | --- | --- | --- |
 | A | [GNU AGPL v3 以降](LICENSE) | オープンソースとして利用・改変・再配布する場合 |
-| B | [株式会社ピー・エム・シー ITソリューション事業部の商用ライセンス](LICENSE-COMMERCIAL.md) | 法人が AGPL の義務を負わずに利用したい場合（個別契約） |
+| B | [株式会社ピー・エム・シー ITソリューション事業部の商用ライセンス](LICENSE-COMMERCIAL.md) | AGPL の義務を負わずに利用したい場合（個別契約） |
 
 公開済みの版（v0.1.0）は、受け取った時点の AGPL-3.0-or-later のままです。
 

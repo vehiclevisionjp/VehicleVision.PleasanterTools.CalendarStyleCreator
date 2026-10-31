@@ -17,15 +17,15 @@ Google の API キー・Pleasanter の API キー・実運用サイトの設定�
 
 ## CLA へ署名する
 
-**公開リポジトリへの貢献は、取り込む前に [CLA.md](CLA.md) への署名が要ります。**
+**貢献は、取り込む前に [CLA.md](CLA.md) への署名が要ります。**
 デュアルライセンスを保ち、商用提供も含めて再許諾できる状態を保つためです。
 
 ### 手順
 
 1. [CLA.md](CLA.md) を読む
-2. [「CLA への署名」の Issue][cla-issue] を作り、同意する
+2. 「CLA への署名」の Issue を作り、同意する（Issue テンプレートあり）
 3. 管理者が同意と許諾権限を確認し、[.github/cla/signed.yml](.github/cla/signed.yml) へ追記する
-4. PR のチェック `cla` で確認する（必須化は導入 PR のマージ後に別途行う）
+4. PR の必須チェック `cla` で確認する
 
 **会社の業務として貢献する場合は、法人用の署名も要ります。** 勤務先の承認を先に取ってください。
 
@@ -50,7 +50,3 @@ Google の API キー・Pleasanter の API キー・実運用サイトの設定�
 
 Dependabot・GitHub Actions・`my-repo-automation-bot[bot]` の自動更新 PR は対象外です。
 管理者の確認手順と、必須化前の配置条件は [開発運用](_documents/開発運用.md) にあります。
-提供条件は [ライセンスの説明](LICENSING.md) を参照してください。
-
-[cla-issue]:
-  https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator/issues/new?template=cla.yml

@@ -1,11 +1,11 @@
 VehicleVision.PleasanterTools.CalendarStyleCreator
-Copyright (C) 2026 PMC Co., Ltd. IT Solution Div.
+Copyright (C) PMC Co., Ltd. IT Solution Div.
 SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
 Source: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator
 
 Direct dependencies: none (.NET base class library only).
-All dependencies must be permissive (MIT / BSD / Apache-2.0); see LICENSING.md. Legal review is pending.
-Pleasanter reference submodule: AGPL v3, not included in distribution.
+All dependencies must be permissive (MIT / BSD / Apache-2.0); see LICENSING.md.
+Pleasanter reference source (fetched on demand, not tracked): AGPL v3, not included in distribution.
 Development-only npm dependencies (not included in the distribution):
   markdownlint 0.42.0 / MIT / https://github.com/DavidAnson/markdownlint
   playwright-core 1.64.1 / Apache-2.0 / https://playwright.dev
