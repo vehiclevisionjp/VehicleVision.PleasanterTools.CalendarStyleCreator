@@ -23,6 +23,7 @@ CI は参照ソースを取得・使用しない。詳細は [参照ソース](_
 
 `develop` が開発基準、`master` はリリース用。初期配置後は Issue → develop から作業ブランチ →
 Release ビルドと影響するテスト → push → Draft PR（WIP:、Closes #N）。
+並行作業は `.worktrees/` 内の `git worktree`（`.gitignore` 済み）で行う。
 
 正式な要件は `_documents/` に置く。共通規約はこのファイルが単一の参照元。AGENTS.md と CLAUDE.md から参照する。
 共有メモリは Internal の `VehicleVision.PleasanterTools.ClaudeMemory` の `CalendarStyleCreator/` フォルダを使い、
