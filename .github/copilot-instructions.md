@@ -14,7 +14,8 @@ Pleasanter 本体は AI の事実確認専用で、Git では追跡しない。�
 `PLEASANTER_REFERENCE_DIR` を指定した場合は、その場所を直接読み、ローカルへのリンクは作らない。
 CI は参照ソースを取得・使用しない。詳細は [参照ソース](../_reference/README.md) を読む。
 
-`develop` が開発基準、`master` はリリース用。初期配置後は Issue → develop から作業ブランチ →
+`develop` が開発基準、`master` はリリース用。作業に着手する前に、これからやること・やるべきこと（作業中に見つけたものを含む）を、先に Issue にする。会話の「残りの作業」も Issue に起こし、リポジトリをまたぐ作業は、中心のリポジトリに親の Issue を起こして各リポジトリの Issue から参照する。
+初期配置後は Issue → develop から作業ブランチ →
 Release ビルドと影響するテスト → push → Draft PR（WIP:、Closes #N）。
 並行作業は `.worktrees/` 内の `git worktree`（`.gitignore` 済み）で行う。
 
