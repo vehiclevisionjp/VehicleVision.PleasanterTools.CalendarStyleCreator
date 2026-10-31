@@ -1,6 +1,8 @@
 # ライセンスについて（デュアルライセンス）
 
+<!-- license:begin release=released -->
 > 公開済みの版（v0.1.0）は、受け取った時点の AGPL-3.0-or-later のままです。
+<!-- license:end release -->
 
 対象ソフトウェアは **VehicleVision.PleasanterTools.CalendarStyleCreator**
 
@@ -13,7 +15,7 @@ Copyright (C) PMC Co., Ltd. IT Solution Div.
 | | ライセンス | 全文 | 想定する利用 |
 | --- | --- | --- | --- |
 | A | **GNU AGPL v3 以降**（AGPL-3.0-or-later） | [`LICENSE`](LICENSE) | オープンソースとして利用・改変・再配布する場合 |
-| B | **株式会社ピー・エム・シー ITソリューション事業部の商用ライセンス** | [`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md) | 法人が、AGPL の義務を負わずに利用したい場合（個別契約） |
+| B | **株式会社ピー・エム・シー ITソリューション事業部の商用ライセンス** | [`LICENSE-COMMERCIAL.md`](LICENSE-COMMERCIAL.md) | AGPL の義務を負わずに利用したい場合（個別契約） |
 
 SPDX 表記： `AGPL-3.0-or-later OR LicenseRef-PMC-Commercial`
 
@@ -28,15 +30,18 @@ SPDX 表記： `AGPL-3.0-or-later OR LicenseRef-PMC-Commercial`
   その利用者に対して改変版のソースコードを提供する義務**が生じます
 - 本ソフトウェアと結合した著作物を配布する場合、その全体を AGPL で提供する必要があります
 
-本ソフトウェアはコンソールアプリで、利用者が自分の環境で実行します（常駐する Web アプリではありません）。
-ただし、組織の内部での利用や受託での提供、Web サービスとしての提供など、義務の有無が分かりにくい場面は確認してください。
+<!-- license:begin usage=console -->
+本ソフトウェアはコンソールアプリで、利用者が自分の環境で実行します。
+<!-- license:end usage -->
+
+組織の内部での利用や受託での提供など、義務の有無が分かりにくい場面は確認してください。
 
 ### B. 商用ライセンスを選ぶ場合
 
-**法人**が、AGPL の義務（ソースコード開示・コピーレフト）を負わずに利用できます。
+AGPL の義務（ソースコード開示・コピーレフト）を負わずに利用できます。
 条件は個別契約で定めます。次のような場合はこちらを検討してください。
 
-- 改変版のソースコードを公開したくない
+- 改変版のソースコードを公開したくない（ネットワーク経由で提供する場合を含む）
 - 自社の proprietary な製品・システムに組み込みたい
 - AGPL の義務範囲について社内の法務判断が難しい
 - 保守・サポート・SLA を契約に含めたい
@@ -49,15 +54,19 @@ SPDX 表記： `AGPL-3.0-or-later OR LicenseRef-PMC-Commercial`
 本ソフトウェアは Pleasanter（株式会社インプリム, AGPL v3）の
 **独立した別アプリケーション**です。
 
-- 本体のソースコードを **複製・改変・リンク・プロジェクト参照しない**ことを、開発規約
-  （[`.github/copilot-instructions.md`](.github/copilot-instructions.md)）で定めています。Pleasanter のアセンブリも参照しません
-- Google カレンダー等の休日から CSS（拡張スタイル）を生成し、次のどちらかで Pleasanter へ渡します。
-  どちらも本体のプログラムを呼び出さず、**データベースへ直接接続しません**
-  - 本体の `App_Data/Parameters/ExtendedStyles/` へ `.css` ファイルを書き出す（`generate`）
-  - 本体の Extensions API（HTTP）で拡張スタイルを登録・更新する（`register`）
+- 本体のソースコードを **複製・改変・リンク・プロジェクト参照していません**。Pleasanter のアセンブリも参照しません
+- Pleasanter の派生著作物ではありません
+  <!-- license:begin connection=api,config-write -->
+- Pleasanter とは **HTTP 越しに通信**します（標準 Web API など、本体が公開するもの）
+- Pleasanter の設定ファイル置き場（`App_Data/Parameters/` 配下など）へ**ファイルを書き出します**。
+  Pleasanter 本体のプログラムは呼び出しません
+  <!-- license:end connection -->
+  <!-- license:begin reference=on -->
 - [`_reference/Implem.Pleasanter`](_reference/README.md) は**事実確認のための参照専用**で、
   ビルド対象にも配布物にも含めません
+  <!-- license:end reference -->
 
+本ソフトウェアは、Pleasanter 本体の AGPL の**汚染を受けておらず、受け入れるつもりもありません。**
 そのため、本ソフトウェアのライセンスは Pleasanter のライセンスに拘束されず、
 **著作権者である株式会社ピー・エム・シー ITソリューション事業部が自由に決定できます。
 これがデュアルライセンスを成立させている前提です。**
@@ -66,16 +75,40 @@ SPDX 表記： `AGPL-3.0-or-later OR LicenseRef-PMC-Commercial`
 > Pleasanter の著作権は当社にないため、**取り込んだ瞬間に B（商用ライセンス）を
 > 提供できなくなります。** デュアルの片方が壊れます。
 
+<!-- license:begin pleasanter-note=free -->
+本ソフトウェアは、Google カレンダーなどの休日から CSS（拡張スタイル）を生成し、次のどちらかで Pleasanter へ渡します。
+どちらも本体のプログラムを呼び出さず、**データベースへ直接接続しません**
+（DB のドライバーへの依存も、SQL を発行するコードもありません）。
+
+- 本体の `App_Data/Parameters/ExtendedStyles/` へ `.css` ファイルを書き出す（`generate`）
+- 本体の Extensions API（HTTP）で拡張スタイルを登録・更新する（`register`）
+
+生成する CSS のセレクター（`#CalendarBody`・`#FullCalendar` など）と、Extensions API のルート・必要な条件は、
+本体のソースと実機で確認した**事実**です。確認した版と参照日は
+[参照資料](_development/参照資料.md) と [検証記録](_development/検証記録.md) に残しています。
+本体のコードは含みません。プロジェクト・アセンブリへの参照と、`Implem.*` の名前空間の取り込みが無いことは、
+`bash scripts/reference-isolation-check.sh`（CI で実行）が検査します。
+<!-- license:end pleasanter-note -->
+
 ## 依存ソフトウェアについて
 
-本ソフトウェアが利用する OSS は **すべて寛容ライセンス（MIT / BSD 系 / Apache-2.0）** に
-限定します。**例外はありません。**
+本ソフトウェアが利用する OSS は **寛容ライセンス（MIT / BSD 系 / Apache-2.0）** に
+限定します。一覧は [`NOTICE`](NOTICE) を参照してください。推移的依存と実際の版は `packages.lock.json` にあります。
+
+<!-- license:begin deps-note=free -->
 実行に必要な NuGet の外部パッケージはなく、.NET のクラスライブラリだけを使っています
-（[`NOTICE`](NOTICE) 参照。開発用の npm パッケージは配布物に含みません）。
+（開発用の npm パッケージは配布物に含みません）。
+`bash scripts/notice-check.sh` が、`NOTICE` と実際の依存の食い違いを検査します。
+<!-- license:end deps-note -->
 
 これは意図的な制約です。**コピーレフト系（GPL / AGPL / SSPL 等）の依存が 1 つでも入ると、
 商用ライセンスでの提供ができなくなります。** 依存を追加する際は必ずライセンスを確認してください。
-`bash scripts/notice-check.sh` が、NOTICE と実際の依存の食い違いを検査します。
+
+<!-- license:begin sni=off -->
+<!-- license:end sni -->
+
+<!-- license:begin core=off -->
+<!-- license:end core -->
 
 ## 貢献を受け取るとき
 
