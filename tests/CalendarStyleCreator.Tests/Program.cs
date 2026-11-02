@@ -53,6 +53,28 @@ Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDURATION:P1W\nSUM
 Check(IcalHolidaySource.Parse(Ev("DTSTART:20260101T090000Z\nDTEND:20260105T090000Z\nSUMMARY:x"), 2026, 2026).Count == 1, "iCal timed event is one day");
 Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20300101\nSUMMARY:x"), 2026, 2030).Count == IcalHolidaySource.MaxSpanDays, "iCal span is capped");
 
+// iCal: 繰り返し（RRULE・EXDATE・RECURRENCE-ID）
+var yearly = IcalHolidaySource.Parse(Ev("UID:a\nDTSTART;VALUE=DATE:20250401\nRRULE:FREQ=YEARLY\nSUMMARY:創立記念日"), 2026, 2027);
+Check(yearly.Select(h => h.Date).SequenceEqual([new DateOnly(2026, 4, 1), new DateOnly(2027, 4, 1)]), "RRULE yearly within the year range");
+var weekly = IcalHolidaySource.Parse(Ev("UID:b\nDTSTART;VALUE=DATE:20260105\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=5\nSUMMARY:定休"), 2026, 2026);
+Check(weekly.Select(h => h.Date).SequenceEqual([new DateOnly(2026, 1, 5), new DateOnly(2026, 1, 7), new DateOnly(2026, 1, 12), new DateOnly(2026, 1, 14), new DateOnly(2026, 1, 19)]), "RRULE weekly BYDAY with COUNT");
+var monthly = IcalHolidaySource.Parse(Ev("UID:c\nDTSTART;VALUE=DATE:20260131\nRRULE:FREQ=MONTHLY;BYMONTHDAY=-1;UNTIL=20260430\nSUMMARY:月末"), 2026, 2026);
+Check(monthly.Select(h => h.Date).SequenceEqual([new DateOnly(2026, 1, 31), new DateOnly(2026, 2, 28), new DateOnly(2026, 3, 31), new DateOnly(2026, 4, 30)]), "RRULE monthly last day with UNTIL");
+var every2 = IcalHolidaySource.Parse(Ev("UID:d\nDTSTART;VALUE=DATE:20260101\nRRULE:FREQ=DAILY;INTERVAL=10;COUNT=3\nSUMMARY:x"), 2026, 2026);
+Check(every2.Select(h => h.Date.Day).SequenceEqual([1, 11, 21]), "RRULE daily INTERVAL and COUNT");
+var exd = IcalHolidaySource.Parse(Ev("UID:e\nDTSTART;VALUE=DATE:20260401\nRRULE:FREQ=YEARLY\nEXDATE;VALUE=DATE:20270401\nSUMMARY:x"), 2026, 2028);
+Check(exd.Select(h => h.Date.Year).SequenceEqual([2026, 2028]), "EXDATE removes an occurrence");
+var multiRec = IcalHolidaySource.Parse(Ev("UID:f\nDTSTART;VALUE=DATE:20261229\nDTEND;VALUE=DATE:20270102\nRRULE:FREQ=YEARLY\nSUMMARY:x"), 2027, 2027);
+Check(multiRec.Count == 1 + 3 && multiRec[0].Date == new DateOnly(2027, 1, 1), "Recurring multi-day event overlaps into the next year");
+var recurrenceOverride = IcalHolidaySource.Parse(
+    "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:g\r\nDTSTART;VALUE=DATE:20260401\r\nRRULE:FREQ=YEARLY\r\nSUMMARY:x\r\nEND:VEVENT\r\n"
+    + "BEGIN:VEVENT\r\nUID:g\r\nRECURRENCE-ID;VALUE=DATE:20270401\r\nDTSTART;VALUE=DATE:20270402\r\nSUMMARY:moved\r\nEND:VEVENT\r\n"
+    + "BEGIN:VEVENT\r\nUID:g\r\nRECURRENCE-ID;VALUE=DATE:20280401\r\nDTSTART;VALUE=DATE:20280401\r\nSTATUS:CANCELLED\r\nSUMMARY:x\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n", 2026, 2028);
+Check(recurrenceOverride.Select(h => h.Date).SequenceEqual([new DateOnly(2026, 4, 1), new DateOnly(2027, 4, 2)]), "RECURRENCE-ID replaces and cancels occurrences");
+var unsupported = IcalHolidaySource.Parse(Ev("UID:h\nDTSTART;VALUE=DATE:20260112\nRRULE:FREQ=MONTHLY;BYDAY=2MO\nSUMMARY:x"), 2026, 2027);
+Check(unsupported.Count == 1, "Unsupported RRULE (ordinal BYDAY) uses only the first occurrence");
+Check(IcalHolidaySource.Parse(Ev("UID:i\nDTSTART;VALUE=DATE:20260101\nRRULE:FREQ=DAILY\nSUMMARY:x"), 2026, 2040).Count == IcalRecurrence.MaxOccurrences, "RRULE expansion is capped");
+
 // iCal URL
 Reject(() => IcalHolidaySource.ValidateUrl("http://example.com/a.ics"), "iCal URL must be https");
 Reject(() => Options.Parse(["generate", "/output", "o", "/ical-url", "file:///x.ics"]), "iCal URL scheme");
