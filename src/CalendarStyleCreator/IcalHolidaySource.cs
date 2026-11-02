@@ -114,21 +114,59 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
                 continue;
             }
 
-            var start = Regex.Match(Property(body, "DTSTART"), @"^(\d{4})(\d{2})(\d{2})");
+            var dtStart = Property(body, "DTSTART");
+            var start = Regex.Match(dtStart, @"^(\d{4})(\d{2})(\d{2})(T.*)?$");
             if (!start.Success)
             {
                 continue;
             }
 
-            var date = new DateOnly(int.Parse(start.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[3].Value, CultureInfo.InvariantCulture));
-            if (date.Year < fromYear || date.Year > toYear)
+            var first = new DateOnly(int.Parse(start.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[3].Value, CultureInfo.InvariantCulture));
+            var name = Unescape(Property(body, "SUMMARY"));
+
+            // 終日予定（日付だけの DTSTART）は、DTEND（その日を含まない）または DURATION までの各日を休日にする。
+            // 時間指定の予定は開始日の 1 日だけ
+            var days = start.Groups[4].Success ? 1 : SpanDays(Property(body, "DTEND"), Property(body, "DURATION"), first);
+            if (days > MaxSpanDays)
             {
-                continue;
+                RuntimeLog.WriteLine($"WARNING: An iCal event \"{name}\" spans {days} days; only the first {MaxSpanDays} days are used.");
+                days = MaxSpanDays;
             }
 
-            holidays.Add(new Holiday(date, Unescape(Property(body, "SUMMARY"))));
+            for (var i = 0; i < days; i++)
+            {
+                var date = first.AddDays(i);
+                if (date.Year >= fromYear && date.Year <= toYear)
+                {
+                    holidays.Add(new Holiday(date, name));
+                }
+            }
         }
         return holidays;
+    }
+
+    /// <summary>1 つの終日予定が展開できる日数の上限（暴走を避ける）。</summary>
+    public const int MaxSpanDays = 366;
+
+    /// <summary>終日予定の日数。DTEND（排他的）か DURATION（日・週）で決まる。無い・不正・開始以前なら 1 日。</summary>
+    private static int SpanDays(string dtEnd, string duration, DateOnly first)
+    {
+        var end = Regex.Match(dtEnd, @"^(\d{4})(\d{2})(\d{2})$");
+        if (end.Success)
+        {
+            var last = new DateOnly(int.Parse(end.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(end.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(end.Groups[3].Value, CultureInfo.InvariantCulture));
+            return Math.Max(1, last.DayNumber - first.DayNumber);
+        }
+
+        var span = Regex.Match(duration, @"^P(?:(\d+)W)?(?:(\d+)D)?$");
+        if (span.Success && (span.Groups[1].Success || span.Groups[2].Success))
+        {
+            var weeks = span.Groups[1].Success ? long.Parse(span.Groups[1].Value, CultureInfo.InvariantCulture) : 0;
+            var extra = span.Groups[2].Success ? long.Parse(span.Groups[2].Value, CultureInfo.InvariantCulture) : 0;
+            return (int)Math.Clamp(weeks * 7 + extra, 1, int.MaxValue);
+        }
+
+        return 1;
     }
 
     private static string Property(string block, string name)
