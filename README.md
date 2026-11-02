@@ -67,6 +67,8 @@ Google カレンダー（`GoogleCalendarIds`）・iCal・CSV は併用でき、�
 
 iCal の終日予定は、`DTEND`（その日を含まない）または `DURATION` までの**各日**を休日にします（例: 12/29〜1/3 の休業）。時間指定の予定は開始日の 1 日だけです。1 つの予定で展開するのは 366 日までで、超えると警告して切ります。
 
+iCal の繰り返し予定（`RRULE`）は、`FREQ`（YEARLY・MONTHLY・WEEKLY・DAILY）・`INTERVAL`・`COUNT`・`UNTIL`・`BYMONTH`・`BYMONTHDAY`（負の値も可）・`BYDAY`（序数なし）を展開し、`EXDATE` と `RECURRENCE-ID`（同じ `UID` の回の置き換え・取り消し）も扱います。対応外の規則（`BYSETPOS`・序数つきの `BYDAY`（毎月第 2 月曜など）など）は、警告を出して最初の 1 回だけを使います。1 つの予定で展開するのは 1000 回までです。
+
 | 種類（CSV の第 3 列） | 色 |
 | --- | --- |
 | `日祝`（既定。`祝日`・`holiday` も可） | 日曜・祝日の色 |

@@ -102,26 +102,22 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
         }
     }
 
+    private sealed record IcalEvent(string Uid, DateOnly First, bool Timed, string Name, int Days, string RRule, List<DateOnly> ExDates, DateOnly? RecurrenceId, bool Cancelled);
+
     public static IReadOnlyList<Holiday> Parse(string ics, int fromYear, int toYear)
     {
         var unfolded = Regex.Replace(ics, @"\r?\n[ \t]", "");
-        var holidays = new List<Holiday>();
+        var events = new List<IcalEvent>();
         foreach (Match block in Regex.Matches(unfolded, @"BEGIN:VEVENT\r?\n(.*?)END:VEVENT", RegexOptions.Singleline))
         {
             var body = block.Groups[1].Value;
-            if (Property(body, "STATUS").Equals("CANCELLED", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var dtStart = Property(body, "DTSTART");
-            var start = Regex.Match(dtStart, @"^(\d{4})(\d{2})(\d{2})(T.*)?$");
+            var start = Regex.Match(Property(body, "DTSTART"), @"^(\d{4})(\d{2})(\d{2})(T.*)?$");
             if (!start.Success)
             {
                 continue;
             }
 
-            var first = new DateOnly(int.Parse(start.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(start.Groups[3].Value, CultureInfo.InvariantCulture));
+            var first = ToDate(start);
             var name = Unescape(Property(body, "SUMMARY"));
 
             // 終日予定（日付だけの DTSTART）は、DTEND（その日を含まない）または DURATION までの各日を休日にする。
@@ -133,17 +129,79 @@ public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, 
                 days = MaxSpanDays;
             }
 
-            for (var i = 0; i < days; i++)
+            var exDates = new List<DateOnly>();
+            foreach (Match ex in Regex.Matches(body, @"^EXDATE(?:;[^:\r\n]*)?:(.*?)\r?$", RegexOptions.Multiline | RegexOptions.IgnoreCase))
             {
-                var date = first.AddDays(i);
-                if (date.Year >= fromYear && date.Year <= toYear)
+                foreach (var value in ex.Groups[1].Value.Split(','))
                 {
-                    holidays.Add(new Holiday(date, name));
+                    var d = Regex.Match(value.Trim(), @"^(\d{4})(\d{2})(\d{2})");
+                    if (d.Success)
+                    {
+                        exDates.Add(ToDate(d));
+                    }
+                }
+            }
+
+            var recurrenceId = Regex.Match(Property(body, "RECURRENCE-ID"), @"^(\d{4})(\d{2})(\d{2})");
+            events.Add(new IcalEvent(
+                Property(body, "UID"), first, start.Groups[4].Success, name, days, Property(body, "RRULE"), exDates,
+                recurrenceId.Success ? ToDate(recurrenceId) : null,
+                Property(body, "STATUS").Equals("CANCELLED", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // RECURRENCE-ID は、同じ UID の元の回を置き換える（取り消しなら除く）。置き換えた回は自分の DTSTART で出る
+        var replaced = events.Where(e => e.RecurrenceId is not null && e.Uid.Length > 0)
+            .Select(e => (e.Uid, e.RecurrenceId!.Value)).ToHashSet();
+
+        var holidays = new List<Holiday>();
+        var windowEnd = new DateOnly(toYear, 12, 31);
+        foreach (var e in events)
+        {
+            if (e.Cancelled)
+            {
+                continue;
+            }
+
+            IReadOnlyList<DateOnly> starts = [e.First];
+            if (e.RRule.Length > 0 && e.RecurrenceId is null)
+            {
+                if (IcalRecurrence.TryParse(e.RRule, out var rule, out var reason))
+                {
+                    starts = rule!.Expand(e.First, windowEnd, out var truncated);
+                    if (truncated)
+                    {
+                        RuntimeLog.WriteLine($"WARNING: An iCal recurring event \"{e.Name}\" has more than {IcalRecurrence.MaxOccurrences} occurrences; the rest are ignored.");
+                    }
+                }
+                else
+                {
+                    RuntimeLog.WriteLine($"WARNING: An iCal recurring event \"{e.Name}\" is used only once ({reason}).");
+                }
+            }
+
+            foreach (var s in starts)
+            {
+                if (e.ExDates.Contains(s) || (e.RecurrenceId is null && replaced.Contains((e.Uid, s))))
+                {
+                    continue;
+                }
+
+                for (var i = 0; i < e.Days; i++)
+                {
+                    var date = s.AddDays(i);
+                    if (date.Year >= fromYear && date.Year <= toYear)
+                    {
+                        holidays.Add(new Holiday(date, e.Name));
+                    }
                 }
             }
         }
+
         return holidays;
     }
+
+    private static DateOnly ToDate(Match m) =>
+        new(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture), int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture));
 
     /// <summary>1 つの終日予定が展開できる日数の上限（暴走を避ける）。</summary>
     public const int MaxSpanDays = 366;
