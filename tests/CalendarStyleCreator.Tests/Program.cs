@@ -40,6 +40,19 @@ var google = IcalHolidaySource.Parse(ics, 2026, 2027);
 Check(google.Count == 2 && google[0] == new Holiday(new DateOnly(2026, 1, 1), "元日"), "iCal date and summary");
 Check(google[1].Name == "成人の日", "iCal folded line is joined");
 
+// iCal: 複数日の終日予定（DTEND は含まない）・年跨ぎ・DURATION・時間指定・上限
+string Ev(string lines) => "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\n" + lines.Replace("\n", "\r\n") + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+var multi = IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20261229\nDTEND;VALUE=DATE:20270104\nSUMMARY:年末年始休業"), 2026, 2027);
+Check(multi.Count == 6 && multi[0].Date == new DateOnly(2026, 12, 29) && multi[5].Date == new DateOnly(2027, 1, 3) && multi.All(h => h.Name == "年末年始休業"), "iCal multi-day all-day event covers DTSTART to the day before DTEND");
+var crossing = IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20261229\nDTEND;VALUE=DATE:20270104\nSUMMARY:x"), 2027, 2027);
+Check(crossing.Count == 3 && crossing[0].Date == new DateOnly(2027, 1, 1), "iCal multi-day event is filtered per day by year");
+Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nSUMMARY:x"), 2026, 2026).Count == 1, "iCal all-day event without DTEND is one day");
+Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260101\nSUMMARY:x"), 2026, 2026).Count == 1, "iCal DTEND not after DTSTART is one day");
+Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDURATION:P3D\nSUMMARY:x"), 2026, 2026).Count == 3, "iCal DURATION in days");
+Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDURATION:P1W\nSUMMARY:x"), 2026, 2026).Count == 7, "iCal DURATION in weeks");
+Check(IcalHolidaySource.Parse(Ev("DTSTART:20260101T090000Z\nDTEND:20260105T090000Z\nSUMMARY:x"), 2026, 2026).Count == 1, "iCal timed event is one day");
+Check(IcalHolidaySource.Parse(Ev("DTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20300101\nSUMMARY:x"), 2026, 2030).Count == IcalHolidaySource.MaxSpanDays, "iCal span is capped");
+
 // iCal URL
 Reject(() => IcalHolidaySource.ValidateUrl("http://example.com/a.ics"), "iCal URL must be https");
 Reject(() => Options.Parse(["generate", "/output", "o", "/ical-url", "file:///x.ics"]), "iCal URL scheme");
