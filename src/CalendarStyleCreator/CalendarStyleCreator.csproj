@@ -6,6 +6,10 @@
     <RuntimeIdentifiers>win-x86;win-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Pleasanter の Web API クライアント。LGPL・AGPL・商用の 3 層（自社。NOTICE・LICENSING.md の dotnetclient） -->
+    <PackageReference Include="VehicleVision.PleasanterTools.DotNetClient" Version="0.2.0" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- 既定のパラメーター（Pleasanter 本体の App_Data/Parameters と同じ構成）。ビルド・発行の出力へそのまま置く。 -->
     <Content Include="App_Data/Parameters/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

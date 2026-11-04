@@ -7,7 +7,7 @@
 
 .NET 10、デュアルライセンス（AGPL-3.0-or-later ＋ 商用。[LICENSING.md](../LICENSING.md)）。
 Pleasanter 本体は AI の事実確認専用で、Git では追跡しない。取り込むと商用側を提供できなくなる。
-依存 OSS は寛容ライセンス（MIT / BSD 系 / Apache-2.0）に限定する（例外なし。LICENSING.md）。
+依存 OSS は寛容ライセンス（MIT / BSD 系 / Apache-2.0）に限定する（LICENSING.md）。ただし、当社の共通部品（Core・DotNetClient）は、VehicleVision.PleasanterTools のツールが組み込む場合に呼び出し元と一体として扱うため例外とする（LICENSING.md の `core`・`dotnetclient`）。
 コードをコピー・流用・リンク・プロジェクト参照せず、ビルド・配布物にも含めない。
 事実確認の前に `bash scripts/sync-reference.sh` で上流 `main` の先頭へ更新する。
 既定先は `_reference/Implem.Pleasanter`。

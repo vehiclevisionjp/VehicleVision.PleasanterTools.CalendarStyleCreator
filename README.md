@@ -104,7 +104,7 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 テナントの拡張機能 API（`AllowExtensionsApi`）を有効にし、拡張機能を管理できるユーザーの API キーを使います。同名の拡張スタイルがあれば更新し、内容が同じなら何もしません。
 
 - **テナント**: 拡張は API キーの持ち主のテナントに登録されます。別のテナントにする場合は `/tenant-id` を指定します。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます（本体は全テナントの拡張を起動時に読み込みます）。
-- **http**: Pleasanter の API に https の制限はないため http の URL も使えますが、API キーが平文で流れるため警告を出します。
+- **URL**: API キーが本文に載るため、`https` の URL だけ使えます（`http` は `localhost`・`127.0.0.1`・`[::1]` のループバックだけ）。URL に資格情報（`user:pass@`）・クエリ（`?`）・フラグメント（`#`）は含められません。リダイレクトは辿りません。
 
 ## パラメーター（固定の設定）
 

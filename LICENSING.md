@@ -99,8 +99,8 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 `packages.lock.json` を置いているリポジトリでは、推移的依存と実際の版もそこで確認できます。
 
 <!-- license:begin deps-note=free -->
-実行に必要な NuGet の外部パッケージはなく、.NET のクラスライブラリだけを使っています
-（開発用の npm パッケージは配布物に含みません）。
+実行に必要な NuGet の外部パッケージは、当社の共通部品 DotNetClient（LGPL／AGPL／商用の 3 層）だけで、ほかは .NET のクラスライブラリです
+（開発用の npm パッケージは配布物に含みません）。DotNetClient は Pleasanter の Web API クライアントとして利用します（下の例外の節）。
 `bash scripts/notice-check.sh` が、`NOTICE` と実際の依存の食い違いを検査します。
 <!-- license:end deps-note -->
 
@@ -113,7 +113,19 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 <!-- license:begin core=off -->
 <!-- license:end core -->
 
-<!-- license:begin dotnetclient=off -->
+<!-- license:begin dotnetclient=on -->
+### 例外: 当社の共通部品 DotNetClient（LGPL／AGPL／商用のトリプルライセンス）
+
+本ソフトウェアは、当社の共通部品 DotNetClient（`VehicleVision.PleasanterTools.DotNetClient` の NuGet パッケージ）を利用します。
+DotNetClient は寛容ライセンスではなく、**LGPL-3.0-or-later・AGPL-3.0-or-later・商用ライセンスの 3 層**で提供されます。
+著作権者は本ソフトウェアと同じ、当社です。
+
+- **A（AGPL）を選ぶ場合**: DotNetClient も AGPL で利用します
+- **B（商用）を選ぶ場合**: 本ソフトウェアの商用ライセンスは、本ソフトウェアに組み込まれた DotNetClient を含みます。
+  DotNetClient を単体で利用する場合と、当社のアプリケーション以外へ組み込む場合は、DotNetClient の条件によります
+
+DotNetClient の条件は、次を参照してください。
+[DotNetClient の LICENSING.md](https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient/blob/develop/LICENSING.md)
 <!-- license:end dotnetclient -->
 
 ## 貢献を受け取るとき

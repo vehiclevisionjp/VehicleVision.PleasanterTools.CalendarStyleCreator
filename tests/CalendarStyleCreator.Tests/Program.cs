@@ -233,12 +233,20 @@ foreach (var badPrefix in new[] { "", "_x", "a b", "a/b", "../x", new string('a'
 }
 
 Reject(() => Options.Parse(["generate", "/csv", "h.csv", "/output", "o", "/tenant-id", "1"]), "/tenant-id applies to register only");
-Check(Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.local", "/tenant-id", "3"]).TenantId == 3, "register accepts http and a tenant ID");
+Check(Options.Parse(["register", "/csv", "h.csv", "/url", "https://pleasanter.local", "/tenant-id", "3"]).TenantId == 3, "register accepts a tenant ID");
 
 // Extensions API
-Reject(() => ApiStyleSink.ValidateBaseUrl("ftp://pleasanter.example.com"), "Pleasanter URL must be http or https");
-ApiStyleSink.ValidateBaseUrl("http://pleasanter.local");
-ApiStyleSink.ValidateBaseUrl("https://pleasanter.example.com/");
+foreach (var badUrl in new[] { "ftp://pleasanter.example.com", "http://pleasanter.local", "http://192.168.0.10", "https://user:pass@pleasanter.example.com", "https://pleasanter.example.com/?x=1", "https://pleasanter.example.com/#f", "pleasanter.example.com", "" })
+{
+    Reject(() => ApiStyleSink.ValidateBaseUrl(badUrl), "Pleasanter URL is rejected: " + badUrl);
+    Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", badUrl]), "register rejects the URL early: " + badUrl);
+}
+
+foreach (var goodUrl in new[] { "https://pleasanter.example.com/", "https://pleasanter.example.com/pleasanter", "http://localhost:8080", "http://127.0.0.1", "http://[::1]:5000" })
+{
+    ApiStyleSink.ValidateBaseUrl(goodUrl);
+    passed++;
+}
 {
     var pl = new FakePleasanter();
     using var http = new HttpClient(pl);
@@ -265,9 +273,71 @@ ApiStyleSink.ValidateBaseUrl("https://pleasanter.example.com/");
     pl.Mode = "forbidden";
     try { await sink.WriteAsync(set, default); throw new Exception("FAIL: 403 expected"); }
     catch (UserError e) { Check(e.Message.Contains("AllowExtensionsApi") && !e.Message.Contains("KEY-123"), "403 explains AllowExtensionsApi without leaking the API key"); }
+    foreach (var (mode, expected) in new[] { ("unauthorized", "401"), ("down", "Could not connect"), ("redirect", "status 307"), ("server-error", "status 503"), ("body-429", "status 429") })
+    {
+        pl.Mode = mode;
+        try { await sink.WriteAsync(set, default); throw new Exception("FAIL: failure expected for " + mode); }
+        catch (UserError e) { Check(e.Message.Contains(expected) && !e.Message.Contains("KEY-123"), $"{mode}: reported as '{expected}' without leaking the API key"); }
+    }
+
+    pl.Mode = "";
+    using var canceled = new CancellationTokenSource();
+    canceled.Cancel();
+    try { await sink.WriteAsync(set, canceled.Token); throw new Exception("FAIL: cancel expected"); }
+    catch (OperationCanceledException) { passed++; }
     pl.Mode = "duplicate";
     try { await sink.WriteAsync(set, default); throw new Exception("FAIL: duplicate expected"); }
     catch (UserError e) { Check(e.Message.Contains("Multiple"), "Duplicate names are reported"); }
+}
+
+// 既定の HttpClient（PleasanterHttp）はリダイレクトを辿らない（307 は本文ごと再送されるため、API キーが転送先へ渡る）。ループバックの実サーバーで確かめる。
+{
+    static int FreePort()
+    {
+        var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        probe.Start();
+        var port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        return port;
+    }
+
+    var (portA, portB) = (FreePort(), FreePort());
+    using var a = new System.Net.HttpListener();
+    using var b = new System.Net.HttpListener();
+    a.Prefixes.Add($"http://127.0.0.1:{portA}/");
+    b.Prefixes.Add($"http://127.0.0.1:{portB}/");
+    a.Start();
+    b.Start();
+    var forwarded = 0;
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            while (true)
+            {
+                var ctx = await a.GetContextAsync();
+                ctx.Response.StatusCode = 307;
+                ctx.Response.RedirectLocation = $"http://127.0.0.1:{portB}/api/extensions/get";
+                ctx.Response.Close();
+            }
+        }
+        catch (Exception) { }
+    });
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            while (true)
+            {
+                var ctx = await b.GetContextAsync();
+                Interlocked.Increment(ref forwarded);
+                ctx.Response.Close();
+            }
+        }
+        catch (Exception) { }
+    });
+    try { await new ApiStyleSink($"http://127.0.0.1:{portA}", "KEY-123").WriteAsync(set, default); throw new Exception("FAIL: 307 expected"); }
+    catch (UserError e) { Check(e.Message.Contains("status 307") && forwarded == 0, "The default client does not follow redirects (the API key is not forwarded)"); }
 }
 
 // File sink
@@ -320,9 +390,35 @@ sealed class FakePleasanter : HttpMessageHandler
     public void AddForeign(int id, string name) => Items[id] = new() { ["ExtensionType"] = "Style", ["ExtensionName"] = name, ["Body"] = "/* other */", ["ExtensionSettings"] = new System.Text.Json.Nodes.JsonObject { ["Name"] = name }.ToJsonString() };
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
     {
+        cancel.ThrowIfCancellationRequested();
         var path = request.RequestUri!.AbsolutePath;
         var body = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(await request.Content!.ReadAsStringAsync(cancel))!;
         static HttpResponseMessage Json(string json) => new() { Content = new StringContent(json) };
+        if (Mode == "unauthorized")
+        {
+            return Json("""{"StatusCode":401,"Message":"Unauthorized"}""");
+        }
+
+        if (Mode == "body-429")
+        {
+            return Json("""{"StatusCode":429,"Message":"Too many"}""");
+        }
+
+        if (Mode == "down")
+        {
+            throw new HttpRequestException("connection refused");
+        }
+
+        if (Mode == "redirect")
+        {
+            return new HttpResponseMessage(System.Net.HttpStatusCode.TemporaryRedirect);
+        }
+
+        if (Mode == "server-error")
+        {
+            return new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable) { Content = new StringContent("<html>") };
+        }
+
         if (Mode == "forbidden")
         {
             return Json("""{"StatusCode":403,"Message":"Forbidden"}""");
