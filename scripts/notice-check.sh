@@ -47,7 +47,7 @@ check_list() {
     echo "== ${kind} の直接依存が NOTICE に載っているか =="
     if [ ! -s "$list" ]; then
         if [ "$kind" = NuGet ]; then
-            # このリポジトリは標準ライブラリだけで書く（外部パッケージを増やさない）ので、直接依存が無いのが正常
+            # 直接依存は自社の DotNetClient だけ（外部パッケージを増やさない）。無ければ無いで正常として扱う
             echo "  （NuGet の直接依存は無い）"
             return
         fi

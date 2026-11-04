@@ -47,7 +47,7 @@ dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.C
 - API キーは、拡張機能を管理できるユーザー（テナント管理者など）のものを使います。App Service のアプリ設定に `CALENDARSTYLE_PLEASANTER_API_KEY` として登録し、コマンドラインには書かないでください。
 - `/site-id` で適用サイトを限定できます。登録後はアプリの再起動が必要です。
 - 同名の拡張スタイルがあれば更新し、なければ作成します。内容が同じなら何もしません。
-- URL は http も使えます（Pleasanter の API に https の制限はありません）。ただし API キーが平文で流れるので、http のときは警告を出します。
+- URL は `https` だけ使えます（`http` は `localhost`・`127.0.0.1`・`[::1]` のループバックだけ）。社内の平文 http の接続先は使えないので、https にしてください。資格情報・クエリ・フラグメントを含む URL も使えません。
 - 拡張は API キーの持ち主のテナントに登録されます。別のテナントにするときは `/tenant-id` を指定してください。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます。
 - スタイルは `vvcsc_core` と `vvcsc_{年}` の組で登録されます（`/prefix` で変更可）。今回の範囲から外れた年（過ぎた年など）を消すときは `/prune` を付けます。接頭辞で始まるものだけが対象です。
 

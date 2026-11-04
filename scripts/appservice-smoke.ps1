@@ -80,8 +80,9 @@ try {
         Invoke-Checked -Arguments @('generate','/ical-url','http://example.invalid/a.ics','/output',$styles) -ExpectedExit 2 -ExpectedText 'must be an absolute https URL'
         # API 登録: 到達できない URL でも資格情報を出力せず、英語のエラーで終了する。
         $env:CALENDARSTYLE_PLEASANTER_API_KEY = 'PRIVATE_TEST_MARKER_DO_NOT_LOG'
-        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://127.0.0.1:1') -ExpectedExit 2 -ExpectedText 'WARNING: The API key is sent over http'
-        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','ftp://pleasanter.example.invalid') -ExpectedExit 2 -ExpectedText 'http or https'
+        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://127.0.0.1:1') -ExpectedExit 2 -ExpectedText 'Could not connect to Pleasanter'
+        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','http://pleasanter.example.invalid') -ExpectedExit 2 -ExpectedText 'must be https'
+        Invoke-Checked -Arguments @('register','/calendar-id','none','/csv',$csv,'/url','ftp://pleasanter.example.invalid') -ExpectedExit 2 -ExpectedText 'must be https'
     } finally { Pop-Location }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $previous[$name]) }
