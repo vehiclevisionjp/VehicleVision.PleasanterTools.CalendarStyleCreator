@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using VehicleVision.PleasanterTools.DotNetClient;
@@ -119,7 +120,13 @@ public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = 
             throw new UserError("Could not connect to Pleasanter.");
         }
 
-        // 成功は HTTP と本文の StatusCode の両方が 200（本文の補いは PleasanterGateway）。本文のエラー詳細は秘密を含まないが、長いので状態だけを出す。
+        // 成功は HTTP と本文の StatusCode の両方が 200（本文の StatusCode は DotNetClient 0.3.0 の ApplicationStatusCode が分類に反映する）。
+        // HTTP が 200 のときだけ本文の StatusCode を報告する。本文のエラー詳細は秘密を含まないが、長いので状態だけを出す。
+        if (status == (int)HttpStatusCode.OK && response.ApplicationStatusCode is { } applicationStatus && applicationStatus != (int)HttpStatusCode.OK)
+        {
+            status = applicationStatus;
+        }
+
         if (status == 403)
         {
             throw new UserError("Pleasanter returned 403. Enable AllowExtensionsApi for the tenant and use an API key of a user who can manage extensions.");

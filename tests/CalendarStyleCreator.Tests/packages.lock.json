@@ -4,13 +4,13 @@
     "net10.0": {
       "VehicleVision.PleasanterTools.DotNetClient": {
         "type": "Transitive",
-        "resolved": "0.2.0",
-        "contentHash": "s0iBREzBbK3i79Eo15LYZqwDiRTBtw5olqecHbyghr7RYFcGINQDtL31e01kg1gzqfyLaXpztc9wGxBgTfqW8g=="
+        "resolved": "0.3.0",
+        "contentHash": "64LxAhhGbKvl/DxBCfH8cGz0MN/Ea/6+vIsfp3Iu+ZrkXVbAbfATqYu3NKmiuvEVfO5SyRH4Cb2IJqqQ006d/Q=="
       },
       "VehicleVision.PleasanterTools.CalendarStyleCreator": {
         "type": "Project",
         "dependencies": {
-          "VehicleVision.PleasanterTools.DotNetClient": "[0.2.0, )"
+          "VehicleVision.PleasanterTools.DotNetClient": "[0.3.0, )"
         }
       }
     }
