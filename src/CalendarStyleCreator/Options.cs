@@ -13,6 +13,27 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
     public const string IcalBasicPasswordVariable = "CALENDARSTYLE_ICAL_BASIC_PASSWORD";
     public const string PleasanterApiKeyVariable = "CALENDARSTYLE_PLEASANTER_API_KEY";
 
+    /// <summary>環境変数の名前。DotNetClient の <c>PleasanterOptions.FromEnvironment()</c> と同じ名前にそろえている。</summary>
+    public const string AllowInsecureHttpVariable = "PLEASANTER_ALLOW_INSECURE_HTTP";
+
+    /// <summary>
+    /// 平文 http の許可の既定値。環境変数 <c>PLEASANTER_ALLOW_INSECURE_HTTP</c> が <c>true</c>（大文字小文字は問わない）のときだけ有効。
+    /// 本ツールは DotNetClient の接続設定を自前で組むので、DotNetClient 側の環境変数の読み取り（<c>FromEnvironment()</c>）は届かない。そのため、ここで読む。
+    /// </summary>
+    public static bool DefaultAllowInsecureHttp => ParseAllowInsecureHttp(Environment.GetEnvironmentVariable(AllowInsecureHttpVariable));
+
+    /// <summary>環境変数の値を読む。<c>true</c>（大文字小文字は問わない）のときだけ有効。</summary>
+    public static bool ParseAllowInsecureHttp(string? value)
+        => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// ループバック以外の <c>http</c> の Pleasanter も許す。<b>検証用の環境だけで有効にすること。</b>有効にすると、API キーを含むリクエストの本文が<b>平文</b>で流れる。
+    /// 既定は、環境変数 <c>PLEASANTER_ALLOW_INSECURE_HTTP</c> が <c>true</c> のときだけ有効（<see cref="DefaultAllowInsecureHttp"/>）。
+    /// コマンドライン・パラメーターファイルからは設定できない（誤って常用されないよう、環境変数だけ）。
+    /// 資格情報・クエリ・フラグメント・http／https 以外のスキームは、有効にしても拒否される。
+    /// </summary>
+    public bool AllowInsecureHttp { get; init; } = DefaultAllowInsecureHttp;
+
     private static readonly string[] ValueOptions = ["parameters", "p", "csv", "calendar-id", "ical-url", "from", "to", "prefix", "first-day-of-week", "site-id", "tenant-id", "output", "url", "holiday-bg", "saturday-bg", "holiday-text", "saturday-text", "weekday-bg", "weekday-text"];
     private static readonly string[] FlagOptions = ["prune"];
     private static readonly string[] PathOptions = ["parameters", "p", "csv", "output"];
@@ -141,7 +162,7 @@ public sealed record Options(string Action, IReadOnlyList<string> CsvPaths, IRea
 
         if (action == "register")
         {
-            ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!);
+            ApiStyleSink.ValidateBaseUrl(options.PleasanterUrl!, options.AllowInsecureHttp);
         }
 
         return options;

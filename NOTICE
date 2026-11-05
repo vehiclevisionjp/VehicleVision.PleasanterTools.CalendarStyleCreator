@@ -3,7 +3,7 @@ Copyright (C) PMC Co., Ltd. IT Solution Div.
 SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-PMC-Commercial
 Source: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.CalendarStyleCreator
 
-Direct dependencies: VehicleVision.PleasanterTools.DotNetClient 0.2.0 / LGPL-3.0-or-later OR AGPL-3.0-or-later OR commercial (own common component; Pleasanter Web API client; https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient ), otherwise .NET base class library only.
+Direct dependencies: VehicleVision.PleasanterTools.DotNetClient 0.3.0 / LGPL-3.0-or-later OR AGPL-3.0-or-later OR commercial (own common component; Pleasanter Web API client; https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.DotNetClient ), otherwise .NET base class library only.
 Other dependencies must be permissive (MIT / BSD / Apache-2.0); see LICENSING.md.
 DotNetClient is licensed under LGPL-3.0-or-later, AGPL-3.0-or-later or the PMC commercial license (three layers, own). On NuGet it shows LICENSING.md through PackageLicenseFile (no SPDX expression). No transitive dependencies (packages.lock.json).
 Here the A layer (AGPL) uses DotNetClient under AGPL and the B layer (commercial) includes the embedded DotNetClient in the commercial license.
