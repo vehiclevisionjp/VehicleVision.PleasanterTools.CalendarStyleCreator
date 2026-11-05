@@ -105,6 +105,12 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http
 
 - **テナント**: 拡張は API キーの持ち主のテナントに登録されます。別のテナントにする場合は `/tenant-id` を指定します。登録した拡張スタイルは、テナントに関係なく Pleasanter 全体に適用されます（本体は全テナントの拡張を起動時に読み込みます）。
 - **URL**: API キーが本文に載るため、`https` の URL だけ使えます（`http` は `localhost`・`127.0.0.1`・`[::1]` のループバックだけ）。URL に資格情報（`user:pass@`）・クエリ（`?`）・フラグメント（`#`）は含められません。リダイレクトは辿りません。
+- **平文の `http`（検証用だけ）**: ループバック以外の `http`（例: `http://pleasanter.local`）は、既定では拒否します。社内の検証環境などで、どうしても `http` の Pleasanter へ登録する場合だけ、環境変数 `PLEASANTER_ALLOW_INSECURE_HTTP=true` を設定してください。**API キーを含むリクエストの本文が暗号化されずに流れます。本番では使わないでください。** 許可しても、資格情報・クエリ・フラグメント、`http`・`https` 以外のスキーム（`ftp` など）は拒否します。許可はこの環境変数だけで、コマンドライン・パラメーターファイルからは指定できません。
+
+```powershell
+$env:PLEASANTER_ALLOW_INSECURE_HTTP = "true"   # 検証用だけ
+dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll register /url http://pleasanter.local
+```
 
 ## パラメーター（固定の設定）
 
