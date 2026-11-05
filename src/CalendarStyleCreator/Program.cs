@@ -78,7 +78,7 @@ public static class Program
         foreach (var endpoint in options.IcalUrls)
         {
             var auth = IcalAuth.FromEnvironment(Environment.GetEnvironmentVariable, endpoint);
-            sources.Add(new IcalHolidaySource(endpoint.Url, auth.IsEmpty ? null : auth, fromYear, toYear));
+            sources.Add(new IcalHolidaySource(endpoint.Url, auth.IsEmpty ? null : auth, fromYear, toYear, allowInsecureHttp: options.AllowInsecureHttp));
         }
         // 同じ日付が複数の取得元にある場合は後勝ち（CSV で Google の名称や追加休日を上書きできる）。
         foreach (var csv in options.CsvPaths)

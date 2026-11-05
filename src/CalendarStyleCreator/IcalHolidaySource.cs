@@ -58,23 +58,27 @@ public sealed record IcalAuth(string? BearerToken = null, string? BasicUser = nu
 
 /// <summary>
 /// URL で指定した iCal（.ics）から休日を取得する。終日予定の DTSTART を日付として使い、RFC 5545 の折り返し行は連結する。
-/// https のみ許可（資格情報の平文送信を避ける。ループバックの検証用だけ http 可）。認証を付ける場合はリダイレクトを追従せず、別ホストへ資格情報を送らない。
+/// https のみ許可（資格情報の平文送信を避ける。ループバックの検証用だけ http 可。環境変数 PLEASANTER_ALLOW_INSECURE_HTTP=true のときだけ、他の http も可）。認証を付ける場合はリダイレクトを追従せず、別ホストへ資格情報を送らない。
 /// URL 自体が秘密（Google の非公開 iCal アドレスなど）の場合があるため、URL はメッセージに出さない。
 /// </summary>
-public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, int toYear, HttpClient? client = null) : IHolidaySource
+public sealed class IcalHolidaySource(string url, IcalAuth? auth, int fromYear, int toYear, HttpClient? client = null, bool? allowInsecureHttp = null) : IHolidaySource
 {
-    public static void ValidateUrl(string url)
+    /// <param name="allowInsecureHttp">true ならループバック以外の http も通す（検証用）。<c>null</c> は既定（環境変数 <c>PLEASANTER_ALLOW_INSECURE_HTTP=true</c> のときだけ true）。</param>
+    public static void ValidateUrl(string url, bool? allowInsecureHttp = null)
     {
-        // https のみ。ループバック（検証用の手元のサーバー）だけ http を許可する。
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+        // https のみ。ループバック（検証用の手元のサーバー）だけ http を許可する。許可（Pleasanter への接続と同じ環境変数）があれば、他の http も許可する。
+        var allow = allowInsecureHttp ?? Options.DefaultAllowInsecureHttp;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !(uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && (allow || uri.IsLoopback))))
         {
-            throw new UserError("iCal URL must be an absolute https URL (http is allowed only for localhost).");
+            throw new UserError(allow
+                ? "iCal URL must be an absolute http or https URL."
+                : $"iCal URL must be an absolute https URL (http is allowed only for localhost). For a test environment only, set {Options.AllowInsecureHttpVariable}=true to allow other http URLs (credentials are then sent in plain text).");
         }
     }
 
     public async Task<IReadOnlyList<Holiday>> GetHolidaysAsync(CancellationToken cancel)
     {
-        ValidateUrl(url);
+        ValidateUrl(url, allowInsecureHttp);
         var header = auth?.ToHeader();
         using var owned = client == null ? new HttpClient(new HttpClientHandler { AllowAutoRedirect = header == null }) { Timeout = TimeSpan.FromSeconds(30) } : null;
         using var request = new HttpRequestMessage(HttpMethod.Get, url) { Headers = { Authorization = header } };

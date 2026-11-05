@@ -31,7 +31,7 @@ dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /p "C:\we
 | オプション | 内容 |
 | --- | --- |
 | `/calendar-id a,b` | Google カレンダー ID をカンマ区切りで複数指定（`GoogleCalendarIds` を上書き）。`none` で Google を使わない |
-| `/ical-url <url,...>` | iCal（.ics）の https URL をカンマ区切りで複数指定。`IcalUrls` を上書き。既定の日本の祝日にも足される |
+| `/ical-url <url,...>` | iCal（.ics）の https URL（検証用の `http` は下記）をカンマ区切りで複数指定。`IcalUrls` を上書き。既定の日本の祝日にも足される |
 | `/csv <file>` | CSV からも読む。同じ日付は CSV が優先 |
 | `/from 2026 /to 2027` | 出力する年の範囲（既定: 今年と来年）。範囲外の休日と土日は出力しない |
 | `/holiday-bg` `/saturday-bg` `/weekday-bg` `/holiday-text` `/saturday-text` `/weekday-text` | 色（`#rrggbb` または色名）。平日の既定は背景なし（`transparent`）・文字色は継承（`inherit`） |
@@ -57,7 +57,9 @@ $env:CALENDARSTYLE_ICAL_BEARER_TOKEN = "..."
 dotnet VehicleVision.PleasanterTools.CalendarStyleCreator.dll generate /ical-url "https://example.com/holidays.ics" /output ...
 ```
 
-https のみ使えます。認証付きの場合はリダイレクトを追従せず、資格情報を別のホストへ送りません。Google の「非公開 iCal 形式のアドレス」のように URL 自体が秘密の場合も `/ical-url` で指定できます（URL はメッセージに出しません）。
+https のみ使えます（`http` は `localhost`・`127.0.0.1`・`[::1]` のループバックだけ）。認証付きの場合はリダイレクトを追従せず、資格情報を別のホストへ送りません。Google の「非公開 iCal 形式のアドレス」のように URL 自体が秘密の場合も `/ical-url` で指定できます（URL はメッセージに出しません）。
+
+社内の検証環境などで、ループバック以外の `http` の iCal を取得したい場合だけ、Pleasanter への接続と同じ環境変数 `PLEASANTER_ALLOW_INSECURE_HTTP=true` を設定してください（[平文の `http`](#api-登録)と共通）。**認証を付けた場合、Bearer トークンやパスワードが暗号化されずに流れます。本番では使わないでください。** 許可しても `http`・`https` 以外のスキーム（`file`・`ftp` など）は拒否します。許可はこの環境変数だけで、コマンドライン・パラメーターファイルからは指定できません。
 
 ## CSV と取得元の併用
 
