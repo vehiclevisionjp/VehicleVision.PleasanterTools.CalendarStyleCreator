@@ -9,27 +9,31 @@ namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 /// Pleasanter の Extensions API（/api/extensions/get・create・{id}/update）へ拡張スタイルとして登録する（API 登録方式）。
 /// 同名の拡張スタイルがあれば更新し、なければ作成する（重複作成しない）。内容が同じなら何もしない。
 /// 必要な条件（本体 ExtensionsController.cs で確認）: テナントの AllowExtensionsApi、テナント管理者などの権限、ユーザーの API キー。
-/// Web API の呼び出しは DotNetClient（NuGet）で行う（PleasanterGateway。API キーは本文の ApiKey で送る）。URL は DotNetClient の検査に揃え、https のみ（http はループバックだけ）、資格情報・クエリ・フラグメントは不可。リダイレクトは辿らない。API キーはメッセージに出さない。
+/// Web API の呼び出しは DotNetClient（NuGet）で行う（PleasanterGateway。API キーは本文の ApiKey で送る）。URL は DotNetClient の検査に揃え、https のみ（http はループバックだけ。環境変数 PLEASANTER_ALLOW_INSECURE_HTTP=true のときだけ他の http も可）、資格情報・クエリ・フラグメントは不可。リダイレクトは辿らない。API キーはメッセージに出さない。
 /// テナント: 既定は API キーの持ち主のテナント。TenantId を指定すると本文の TenantId で送る（本体 ExtensionModel.SetByApi）。登録した拡張スタイルは、テナントに関係なく本体全体に適用される（ExtensionInitializer は全テナントの拡張を読む）。
 /// 一式（共通部 + 年ごと）を 1 回の一覧取得で突き合わせ、接頭辞で始まる管理対象のうち一式に含まれないものは Prune のときだけ削除する。
 /// </summary>
-public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = null, HttpClient? client = null) : IStyleSink
+public sealed class ApiStyleSink(string baseUrl, string apiKey, int? tenantId = null, HttpClient? client = null, bool? allowInsecureHttp = null) : IStyleSink
 {
     private const string ExtensionType = "Style";
 
-    public static void ValidateBaseUrl(string url)
+    /// <param name="allowInsecureHttp">true ならループバック以外の http も通す。<c>null</c> は既定（環境変数 <c>PLEASANTER_ALLOW_INSECURE_HTTP=true</c> のときだけ true）。</param>
+    public static void ValidateBaseUrl(string url, bool? allowInsecureHttp = null)
     {
         // DotNetClient の説明文は日本語のため、コンソールが英語固定の本ツールでは使わず、同じ規則を英語で伝える。
-        if (!PleasanterGateway.IsValidBaseUrl(url))
+        var allow = allowInsecureHttp ?? Options.DefaultAllowInsecureHttp;
+        if (!PleasanterGateway.IsValidBaseUrl(url, allow))
         {
-            throw new UserError("Pleasanter URL must be https (http only for localhost, 127.0.0.1 or [::1]) and must not contain credentials, a query or a fragment.");
+            throw new UserError(allow
+                ? "Pleasanter URL must be http or https and must not contain credentials, a query or a fragment."
+                : $"Pleasanter URL must be https (http only for localhost, 127.0.0.1 or [::1]) and must not contain credentials, a query or a fragment. For a test environment only, set {Options.AllowInsecureHttpVariable}=true to allow other http URLs (the API key is then sent in plain text).");
         }
     }
 
     public async Task WriteAsync(StyleSet set, CancellationToken cancel)
     {
-        ValidateBaseUrl(baseUrl);
-        using var gateway = new PleasanterGateway(baseUrl, apiKey, client);
+        ValidateBaseUrl(baseUrl, allowInsecureHttp);
+        using var gateway = new PleasanterGateway(baseUrl, apiKey, client, allowInsecureHttp);
         var existing = await ListAsync(gateway, cancel);
         foreach (var style in set.Styles)
         {

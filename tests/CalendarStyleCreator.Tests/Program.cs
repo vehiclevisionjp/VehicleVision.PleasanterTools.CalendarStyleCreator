@@ -247,6 +247,46 @@ foreach (var goodUrl in new[] { "https://pleasanter.example.com/", "https://plea
     ApiStyleSink.ValidateBaseUrl(goodUrl);
     passed++;
 }
+
+// 平文 http の許可（PLEASANTER_ALLOW_INSECURE_HTTP / AllowInsecureHttp）。許可なしの挙動は上のとおり変わらない。
+Check(!Options.ParseAllowInsecureHttp(null) && !Options.ParseAllowInsecureHttp("") && !Options.ParseAllowInsecureHttp("1") && !Options.ParseAllowInsecureHttp("false") && !Options.ParseAllowInsecureHttp("yes"), "Insecure http is off unless the value is true");
+Check(Options.ParseAllowInsecureHttp("true") && Options.ParseAllowInsecureHttp("TRUE"), "Insecure http is on for true (case-insensitive)");
+foreach (var insecureUrl in new[] { "http://pleasanter.local", "http://192.168.0.10:8080", "http://pleasanter:8080/pleasanter", "https://pleasanter.example.com/" })
+{
+    ApiStyleSink.ValidateBaseUrl(insecureUrl, true);
+    passed++;
+}
+foreach (var alwaysBad in new[] { "ftp://pleasanter.example.com", "http://user:pass@pleasanter.local", "https://user:pass@pleasanter.example.com", "http://pleasanter.local/?x=1", "http://pleasanter.local/#f", "https://pleasanter.example.com/?x=1", "pleasanter.local", "" })
+{
+    Reject(() => ApiStyleSink.ValidateBaseUrl(alwaysBad, true), "Pleasanter URL is rejected even when insecure http is allowed: " + alwaysBad);
+}
+
+Reject(() => ApiStyleSink.ValidateBaseUrl("http://pleasanter.local", false), "Explicit false rejects non-loopback http");
+{
+    var saved = Environment.GetEnvironmentVariable(Options.AllowInsecureHttpVariable);
+    try
+    {
+        Environment.SetEnvironmentVariable(Options.AllowInsecureHttpVariable, null);
+        Check(!Options.Parse(["register", "/csv", "h.csv", "/url", "https://pleasanter.local"]).AllowInsecureHttp, "AllowInsecureHttp defaults to false");
+        Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.local"]), "register rejects non-loopback http by default");
+        Environment.SetEnvironmentVariable(Options.AllowInsecureHttpVariable, "true");
+        var allowed = Options.Parse(["register", "/csv", "h.csv", "/url", "http://pleasanter.local:8080"]);
+        Check(allowed.AllowInsecureHttp && allowed.PleasanterUrl == "http://pleasanter.local:8080", "The environment variable allows register with a non-loopback http URL");
+        Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", "http://u:p@pleasanter.local"]), "register still rejects credentials with the environment variable");
+        Reject(() => Options.Parse(["register", "/csv", "h.csv", "/url", "ftp://pleasanter.local"]), "register still rejects ftp with the environment variable");
+        Check((allowed with { AllowInsecureHttp = false }).AllowInsecureHttp == false, "AllowInsecureHttp can be set explicitly");
+        using var http = new HttpClient(new FakePleasanter());
+        Reject(() => new ApiStyleSink("http://pl.test/", "KEY-123", null, http, allowInsecureHttp: false).WriteAsync(StyleSet.Create("vvcsc_", generated, [], false), default).GetAwaiter().GetResult(), "The sink rejects non-loopback http when explicitly not allowed");
+        var allowedFake = new FakePleasanter();
+        using var allowedHttp = new HttpClient(allowedFake);
+        await new ApiStyleSink("http://pl.test/", "KEY-123", null, allowedHttp).WriteAsync(StyleSet.Create("vvcsc_", generated, [], false), default);
+        Check(allowedFake.Created == 3, "The sink sends to a non-loopback http URL when the environment variable allows it");
+    }
+    finally
+    {
+        Environment.SetEnvironmentVariable(Options.AllowInsecureHttpVariable, saved);
+    }
+}
 {
     var pl = new FakePleasanter();
     using var http = new HttpClient(pl);

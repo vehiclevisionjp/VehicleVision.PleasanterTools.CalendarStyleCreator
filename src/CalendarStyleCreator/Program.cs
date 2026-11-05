@@ -50,7 +50,7 @@ public static class Program
             var set = StyleSet.Create(options.Prefix, CssGenerator.Generate(holidays, options.Theme, fromYear, toYear, options.FirstDayOfWeek), options.SiteIds, options.Prune);
             IStyleSink sink = options.Action == "generate"
                 ? new FileStyleSink(options.Output!)
-                : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."), options.TenantId);
+                : new ApiStyleSink(options.PleasanterUrl!, Environment.GetEnvironmentVariable(Options.PleasanterApiKeyVariable) ?? throw new UserError($"Set {Options.PleasanterApiKeyVariable}."), options.TenantId, allowInsecureHttp: options.AllowInsecureHttp);
             await sink.WriteAsync(set, cancel.Token);
             RuntimeLog.WriteLine($"Done. {holidays.Select(h => h.Date).Distinct().Count()} holiday(s).");
             return 0;

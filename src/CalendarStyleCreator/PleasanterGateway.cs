@@ -15,19 +15,22 @@ internal sealed class PleasanterGateway : IDisposable
     private readonly HttpClient? _owned;
     private readonly PleasanterApiClient _client;
 
-    public PleasanterGateway(string baseUrl, string apiKey, HttpClient? client = null)
+    public PleasanterGateway(string baseUrl, string apiKey, HttpClient? client = null, bool? allowInsecureHttp = null)
     {
         _owned = client == null ? PleasanterHttp.CreateClient() : null;
         // 版の問い合わせはしない（追加の通信を避ける）。ApiVersion は DotNetClient の既定（1.1）。
-        _client = new PleasanterApiClient(client ?? _owned!, new PleasanterOptions { BaseUrl = baseUrl, ApiKey = apiKey, DetectServerVersion = false });
+        _client = new PleasanterApiClient(client ?? _owned!, new PleasanterOptions { BaseUrl = baseUrl, ApiKey = apiKey, DetectServerVersion = false, AllowInsecureHttp = allowInsecureHttp ?? Options.DefaultAllowInsecureHttp });
     }
 
-    /// <summary>BaseUrl が DotNetClient の検査（https のみ・ループバックだけ http・資格情報／クエリ／フラグメント不可）を満たすか。</summary>
-    public static bool IsValidBaseUrl(string url)
+    /// <summary>
+    /// BaseUrl が DotNetClient の検査（https のみ・ループバックだけ http・資格情報／クエリ／フラグメント不可）を満たすか。
+    /// <paramref name="allowInsecureHttp"/> が true なら、ループバック以外の http も通す（資格情報・クエリ・フラグメント・http／https 以外のスキームは拒否のまま）。
+    /// </summary>
+    public static bool IsValidBaseUrl(string url, bool allowInsecureHttp = false)
     {
         try
         {
-            new PleasanterOptions { BaseUrl = url, ApiKey = "x" }.Validate();
+            new PleasanterOptions { BaseUrl = url, ApiKey = "x", AllowInsecureHttp = allowInsecureHttp }.Validate();
             return true;
         }
         catch (ArgumentException)
