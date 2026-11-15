@@ -5,7 +5,7 @@
 ## 前提
 
 - Docker、Node.js 24 以上、ローカルの Chrome（Playwright は同梱ブラウザではなくローカルの Chrome を使う）。
-- `npm ci --ignore-scripts` で playwright-core 1.64.1（Apache-2.0、依存なし）を入れる。配布物には含まれない開発専用の依存。
+- `npm ci --ignore-scripts` で playwright-core 1.65.1（Apache-2.0、依存なし）を入れる。配布物には含まれない開発専用の依存。
 - イメージ `implem/pleasanter:1.5.8.1` と `implem/pleasanter:codedefiner`、`postgres:18-alpine`。
 - `compose.yaml` は専用のプロジェクト名（`calendarstyle-test`）・コンテナ名・ボリューム・ポート（本体 58801、DB 58802、いずれも 127.0.0.1）を使う。他のコンテナには触れない。
 - 検証用の資格情報（管理者 Administrator、DB のパスワード）は使い捨て。初回ログインで既定のパスワードを変更する。

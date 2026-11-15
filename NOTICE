@@ -11,4 +11,4 @@ When a VehicleVision.PleasanterTools tool embeds it, it is treated as one with t
 Pleasanter reference source (fetched on demand, not tracked): AGPL v3, not included in distribution.
 Development-only npm dependencies (not included in the distribution):
   markdownlint 0.42.0 / MIT / https://github.com/DavidAnson/markdownlint
-  playwright-core 1.64.1 / Apache-2.0 / https://playwright.dev
+  playwright-core 1.65.1 / Apache-2.0 / https://playwright.dev
