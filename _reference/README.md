@@ -56,10 +56,5 @@ CI に本体取得を追加せず、ネットワーク不要の `test-sync-refer
 [検証記録](../_development/検証記録.md) に残します。
 今回、過去の事実を最新ソースで再確認したものとは扱いません。
 
-移行元は Template の承認済みコミット
-`3312f003fbe9827090e20bc643800824bdf30e22`（2026-10-27 参照）の
-[配布手順][distribution]です。背景は
-vehiclevisionjp/VehicleVision.PleasanterTools.Template#61・
-vehiclevisionjp/VehicleVision.PleasanterTools.Template#63 です。
-
-[distribution]: https://github.com/vehiclevisionjp/VehicleVision.PleasanterTools.Template/blob/3312f003fbe9827090e20bc643800824bdf30e22/_documents/参照ソースのオンデマンド取得への配布手順.md
+移行元は共通テンプレートの承認済みコミット
+`3312f003fbe9827090e20bc643800824bdf30e22`（2026-10-27 参照）の配布手順です。
