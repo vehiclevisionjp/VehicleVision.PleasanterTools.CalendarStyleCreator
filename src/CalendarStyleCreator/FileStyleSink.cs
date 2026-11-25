@@ -1,7 +1,7 @@
 namespace VehicleVision.PleasanterTools.CalendarStyleCreator;
 
 /// <summary>
-/// 本体の App_Data/Parameters/ExtendedStyles/{Name}.css として書き出す（ファイル配置方式）。
+/// 本体の App_Data/Parameters/ExtendedStyles/{Name}.css としてエクスポートする（ファイル配置方式）。
 /// 本体（Initializer.ExtendedStyles）がファイルから読むのは *.css だけで、*.json は読まれない（Pleasanter 1.5.8.1 の実機で確認）。
 /// .css は適用サイトなどの指定を持てず全ページに適用されるため、サイトを限定するときは API 登録を使う。
 /// 接頭辞で始まる .css だけを管理対象とし、他のファイルには触れない。

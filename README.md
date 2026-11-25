@@ -17,7 +17,7 @@ Pleasanter のカレンダー表示で休日を色分け・名称表示するた
 
 | 方式 | コマンド | 内容 |
 | --- | --- | --- |
-| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/` に `.css` を書き出す（全サイトに適用） |
+| ファイル配置 | `generate` | `App_Data/Parameters/ExtendedStyles/` に `.css` をエクスポートする（全サイトに適用） |
 | API 登録 | `register` | Extensions API で拡張スタイルを登録・更新する（同名は更新） |
 
 ## 使う
