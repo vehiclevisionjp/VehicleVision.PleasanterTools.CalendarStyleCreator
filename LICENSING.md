@@ -60,7 +60,7 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 - Pleasanter の派生著作物ではありません
   <!-- license:begin connection=api,config-write -->
 - Pleasanter とは **HTTP 越しに通信**します（標準 Web API など、本体が公開するもの）
-- Pleasanter の設定ファイル置き場（`App_Data/Parameters/` 配下など）へ**ファイルを書き出します**。
+- Pleasanter の設定ファイル置き場（`App_Data/Parameters/` 配下など）へ**ファイルをエクスポートします**。
   Pleasanter 本体のプログラムは呼び出しません
   <!-- license:end connection -->
   <!-- license:begin reference=on -->
@@ -82,7 +82,7 @@ AGPL の義務（ソースコード開示・コピーレフト）を負わずに
 どちらも本体のプログラムを呼び出さず、**データベースへ直接接続しません**
 （DB のドライバーへの依存も、SQL を発行するコードもありません）。
 
-- 本体の `App_Data/Parameters/ExtendedStyles/` へ `.css` ファイルを書き出す（`generate`）
+- 本体の `App_Data/Parameters/ExtendedStyles/` へ `.css` ファイルをエクスポートする（`generate`）
 - 本体の Extensions API（HTTP）で拡張スタイルを登録・更新する（`register`）
 
 生成する CSS のセレクター（`#CalendarBody`・`#FullCalendar` など）と、Extensions API のルート・必要な条件は、

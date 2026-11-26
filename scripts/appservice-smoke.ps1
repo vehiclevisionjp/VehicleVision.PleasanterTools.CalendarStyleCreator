@@ -48,7 +48,7 @@ try {
         # 既定のパラメーター（Pleasanter と同じ App_Data/Parameters 構成）が配布物に含まれる。
         foreach ($file in 'Holidays.json', 'Style.json', 'Placement.json') { if (-not (Test-Path -LiteralPath (Join-Path $wwwroot "CalendarStyleCreator/App_Data/Parameters/$file"))) { throw "Default parameter file is missing from the package: $file" } }
         $script:count++
-        # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへ書き出す。
+        # ネットワークを使わない取得元（CSV のみ）で、本体の ExtendedStyles フォルダへエクスポートする。
         Invoke-Checked -Arguments @('generate','/calendar-id','none','/csv',$csv,'/from','2026','/to','2027','/output',$styles) -ExpectedText 'Done. 7 holiday'
         $core = Join-Path $styles 'vvcsc_core.css'
         $year = Join-Path $styles 'vvcsc_2026.css'

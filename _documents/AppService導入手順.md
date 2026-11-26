@@ -18,7 +18,7 @@ wwwroot/
 
 ## ファイル配置（generate）
 
-管理用コンソール（Kudu）で、本体の `ExtendedStyles` フォルダへ書き出します。
+管理用コンソール（Kudu）で、本体の `ExtendedStyles` フォルダへエクスポートします。
 
 ```bat
 dotnet "%HOME%\site\wwwroot\CalendarStyleCreator\VehicleVision.PleasanterTools.CalendarStyleCreator.dll" generate /output "%HOME%\site\wwwroot\Implem.Pleasanter\App_Data\Parameters\ExtendedStyles"
